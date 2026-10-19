@@ -1,0 +1,49 @@
+# ── Android / Gradle ──────────────────────────────────────────────────────────
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# App build outputs
+app/build/
+app/release/
+
+# Room schema exports are kept in VCS intentionally
+# app/schemas/  ← DO NOT ignore this
+
+# Keystore files — NEVER commit
+*.jks
+*.keystore
+release-keystore.jks
+keystore.properties
+
+# Gradle wrapper jar is kept so CI doesn't need to download it
+!gradle/wrapper/gradle-wrapper.jar
+
+# ── Kotlin ────────────────────────────────────────────────────────────────────
+*.class
+*.kotlin_module
+
+# ── IntelliJ / Android Studio ─────────────────────────────────────────────────
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/modules.xml
+*.iws
+out/
+
+# ── OS artifacts ─────────────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
