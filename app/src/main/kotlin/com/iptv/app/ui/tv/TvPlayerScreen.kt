@@ -84,6 +84,15 @@ fun TvPlayerScreen(
     // Direct numeric dial keypad tuning state (e.g. typing "301" on TV remote)
     var dialedDigits by remember { mutableStateOf("") }
     var dialFeedbackMessage by remember { mutableStateOf<String?>(null) }
+    var favoriteFeedbackMessage by remember { mutableStateOf<String?>(null) }
+
+    // Auto-dismiss favorite feedback toast
+    LaunchedEffect(favoriteFeedbackMessage) {
+        if (favoriteFeedbackMessage != null) {
+            delay(2000)
+            favoriteFeedbackMessage = null
+        }
+    }
 
     // Initial channel load
     LaunchedEffect(channelId) {
@@ -142,6 +151,7 @@ fun TvPlayerScreen(
     BackHandler {
         if (uiState.isMiniGuideVisible) {
             viewModel.closeMiniGuide()
+            focusRequester.requestFocus()
         } else if (dialedDigits.isNotEmpty()) {
             dialedDigits = ""
             dialFeedbackMessage = null
@@ -188,13 +198,29 @@ fun TvPlayerScreen(
                     }
 
                     KeyEvent.KEYCODE_DPAD_LEFT -> {
-                        viewModel.toggleMiniGuide()
-                        true
+                        if (!uiState.isMiniGuideVisible) {
+                            viewModel.toggleMiniGuide()
+                            true
+                        } else false
+                    }
+
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        if (uiState.isMiniGuideVisible) {
+                            viewModel.closeMiniGuide()
+                            focusRequester.requestFocus()
+                            true
+                        } else false
                     }
 
                     KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                         if (!uiState.isMiniGuideVisible) {
-                            viewModel.showOsd()
+                            val current = uiState.currentChannel
+                            if (current != null) {
+                                val willBeFavorite = !current.isFavorite
+                                viewModel.toggleFavorite()
+                                viewModel.showOsd()
+                                favoriteFeedbackMessage = if (willBeFavorite) "★ Agregado a favoritos" else "☆ Eliminado de favoritos"
+                            }
                             true
                         } else false
                     }
@@ -202,6 +228,7 @@ fun TvPlayerScreen(
                     KeyEvent.KEYCODE_BACK -> {
                         if (uiState.isMiniGuideVisible) {
                             viewModel.closeMiniGuide()
+                            focusRequester.requestFocus()
                             true
                         } else if (dialedDigits.isNotEmpty()) {
                             dialedDigits = ""
@@ -300,6 +327,33 @@ fun TvPlayerScreen(
             }
         }
 
+        // ── 4b. Favorite Feedback Badge Overlay (Top Center) ─────────────────
+        AnimatedVisibility(
+            visible = favoriteFeedbackMessage != null,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 36.dp),
+        ) {
+            Surface(
+                color = uTVColors.SurfaceGlassOSD,
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(2.dp, uTVColors.FavoriteGold),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = favoriteFeedbackMessage ?: "",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = uTVColors.FavoriteGold,
+                    )
+                }
+            }
+        }
+
         // ── 5. SimpleTvInfoBanner (Bottom 3-block OSD) ────────────────────────
         uiState.currentChannel?.let { currentChannel ->
             Box(
@@ -318,13 +372,17 @@ fun TvPlayerScreen(
             }
         }
 
-        // ── 6. MiniGuideOverlay (35% Left Translucent Panel) ─────────────────
+        // ── 6. MiniGuideOverlay (36% Left Translucent Panel) ─────────────────
         MiniGuideOverlay(
             isVisible = uiState.isMiniGuideVisible,
             channels = allChannels,
             currentChannelId = uiState.currentChannel?.id,
             onChannelSelected = { selected ->
                 viewModel.playChannel(selected)
+                viewModel.closeMiniGuide()
+                focusRequester.requestFocus()
+            },
+            onClose = {
                 viewModel.closeMiniGuide()
                 focusRequester.requestFocus()
             },

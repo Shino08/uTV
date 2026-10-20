@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -74,7 +73,6 @@ enum class TvSection(
     val icon: ImageVector,
 ) {
     HOME("Inicio", Icons.Default.Home),
-    GUIDE("Guía TV", Icons.Default.FormatListNumbered),
     SEARCH("Buscar", Icons.Default.Search),
     ANIME("Anime Hub", Icons.Default.SportsEsports),
     FAVORITES("Favoritos", Icons.Default.Star),
@@ -232,13 +230,6 @@ fun TvHomeScreen(
                                 },
                             )
 
-                            TvSection.GUIDE -> TvGuideContent(
-                                allChannels = allChannels,
-                                onChannelSelect = handleChannelSelect,
-                                onFavoriteToggle = { viewModel.toggleFavorite(it) },
-                                onChannelFocus = { focusedChannel = it },
-                            )
-
                             TvSection.SEARCH -> TvSearchContent(
                                 allChannels = allChannels,
                                 onChannelSelect = handleChannelSelect,
@@ -258,7 +249,7 @@ fun TvHomeScreen(
                                 onChannelSelect = handleChannelSelect,
                                 onFavoriteToggle = { viewModel.toggleFavorite(it) },
                                 onChannelFocus = { focusedChannel = it },
-                                onExploreGuide = { selectedSection = TvSection.GUIDE },
+                                onExploreGuide = { selectedSection = TvSection.HOME },
                             )
                         }
                     }
@@ -641,112 +632,7 @@ private fun TvHomeCatalogContent(
     }
 }
 
-// ── Tab 2: Guía TV en Vivo (Diales 100 – 799) ────────────────────────────────
-
-@Composable
-private fun TvGuideContent(
-    allChannels: List<Channel>,
-    onChannelSelect: (Channel) -> Unit,
-    onFavoriteToggle: (Channel) -> Unit,
-    onChannelFocus: (Channel) -> Unit,
-) {
-    var selectedCategory by remember { mutableStateOf<Category?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
-
-    val filteredGuide = remember(allChannels, selectedCategory, searchQuery) {
-        allChannels
-            .filter { ch ->
-                val matchesCat = selectedCategory == null || ch.category == selectedCategory
-                val matchesQuery = searchQuery.isBlank() ||
-                    ch.name.contains(searchQuery, ignoreCase = true) ||
-                    ch.dialNumber.toString().contains(searchQuery) ||
-                    ch.countryCode.contains(searchQuery, ignoreCase = true)
-                matchesCat && matchesQuery
-            }
-            .sortedBy { it.dialNumber }
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 48.dp),
-    ) {
-        // Header
-        item(key = "tv_guide_header") {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 48.dp, vertical = 12.dp),
-            ) {
-                Text(
-                    text = "Guía TV en Vivo",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = uTVColors.TextPrimary,
-                )
-                Text(
-                    text = "Diales 100 – 799 • Catálogo completo por orden numérico",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = uTVColors.TextSecondary,
-                )
-            }
-        }
-
-        // Category filter chips
-        item(key = "tv_guide_categories") {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 48.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                item {
-                    TvCategoryFilterChip(
-                        label = "Todos (${allChannels.size})",
-                        isSelected = selectedCategory == null,
-                        onClick = { selectedCategory = null },
-                    )
-                }
-                items(Category.entries.filter { it != Category.UNDEFINED }) { cat ->
-                    val count = allChannels.count { it.category == cat }
-                    if (count > 0) {
-                        TvCategoryFilterChip(
-                            label = "${cat.displayName} ($count)",
-                            isSelected = selectedCategory == cat,
-                            onClick = { selectedCategory = if (selectedCategory == cat) null else cat },
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-        }
-
-        // Channels in a responsive 3-column TV grid
-        items(filteredGuide.chunked(3), key = { it.first().id }) { rowChannels ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 48.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                rowChannels.forEach { channel ->
-                    Box(modifier = Modifier.weight(1f)) {
-                        ChannelCard(
-                            channel = channel,
-                            onClick = { onChannelSelect(channel) },
-                            onFavorite = { onFavoriteToggle(channel) },
-                            onFocus = { onChannelFocus(channel) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                repeat(3 - rowChannels.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-// ── Tab 3: TV Search View ────────────────────────────────────────────────────
+// ── Tab 2: TV Search View ────────────────────────────────────────────────────
 
 @Composable
 private fun TvSearchContent(
@@ -1135,7 +1021,7 @@ private fun TvEmptyFavoritesView(onExploreGuide: () -> Unit) {
                     .scale(if (isBtnFocused) 1.08f else 1f)
                     .onFocusChanged { isBtnFocused = it.isFocused },
             ) {
-                Text("Explorar Guía de Canales")
+                Text("Explorar Canales")
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.iptv.app.ui.components.osd
 
+import android.view.KeyEvent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -8,6 +9,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -36,31 +38,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.iptv.app.core.model.Category
 import com.iptv.app.core.model.Channel
 import com.iptv.app.ui.theme.uTVColors
+import kotlinx.coroutines.delay
 
 /**
- * Mini-guide panel following guidelines.md §4.4.
- *
- * TV:     Left-side panel occupying 35% of screen width — slides in from the left.
- * Mobile: Thin left panel (same behavior) — BottomSheet implementation is in MobilePlayerScreen.
- *
- * Channel list is ordered by dialNumber (100→799).
- * Quick-filter tabs by category scroll horizontally above the list.
- * Current channel is highlighted with AccentElectricBlue border.
- *
- * @param isVisible         Whether the panel should be shown.
- * @param channels          Full sorted channel list.
- * @param currentChannelId  ID of the currently playing channel (for highlight).
- * @param onChannelSelected Invoked when user selects a channel to zap to.
+ * Android TV Quick Channel Guide Overlay (Left Panel — 35% screen width):
+ * - D-Pad remote accessible: navigates UP/DOWN smoothly while current channel continues streaming.
+ * - Auto-focuses on the currently playing channel row upon opening.
+ * - Selecting any channel with OK (DPAD_CENTER / ENTER) tunes that channel immediately.
+ * - Pressing D-Pad RIGHT or BACK closes the panel and returns focus to the player.
+ * - Fast category filtering tabs above the list.
  */
 @Composable
 fun MiniGuideOverlay(
@@ -68,6 +69,7 @@ fun MiniGuideOverlay(
     channels: List<Channel>,
     currentChannelId: String?,
     onChannelSelected: (Channel) -> Unit,
+    onClose: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var activeCategory by remember { mutableStateOf<Category?>(null) }
@@ -78,12 +80,26 @@ fun MiniGuideOverlay(
     }
 
     val listState = rememberLazyListState()
+    val activeItemFocusRequester = remember { FocusRequester() }
+    val firstItemFocusRequester = remember { FocusRequester() }
 
-    // Auto-scroll to current channel when guide opens
-    LaunchedEffect(isVisible, currentChannelId) {
-        if (isVisible && currentChannelId != null) {
-            val index = filteredChannels.indexOfFirst { it.id == currentChannelId }
-            if (index >= 0) listState.animateScrollToItem(index)
+    // Auto-scroll and focus the currently playing channel when the guide opens
+    LaunchedEffect(isVisible, activeCategory) {
+        if (isVisible && filteredChannels.isNotEmpty()) {
+            val targetIndex = filteredChannels.indexOfFirst { it.id == currentChannelId }
+            if (targetIndex >= 0) {
+                listState.scrollToItem(maxOf(0, targetIndex - 2))
+            } else {
+                listState.scrollToItem(0)
+            }
+            delay(120)
+            try {
+                if (targetIndex >= 0) {
+                    activeItemFocusRequester.requestFocus()
+                } else {
+                    firstItemFocusRequester.requestFocus()
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -96,7 +112,7 @@ fun MiniGuideOverlay(
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(0.35f)   // 35% of screen width per spec
+                .fillMaxWidth(0.36f)
                 .background(color = uTVColors.SurfaceGlassOSD)
                 .border(
                     width = 1.dp,
@@ -107,12 +123,32 @@ fun MiniGuideOverlay(
             Column(modifier = Modifier.fillMaxSize()) {
 
                 // ── Header ────────────────────────────────────────────────────
-                Text(
-                    text = "Guía de Canales",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = uTVColors.TextPrimary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        Text(
+                            text = "Guía Rápida",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = uTVColors.TextPrimary,
+                        )
+                        Text(
+                            text = "${filteredChannels.size} canales • Pulsa OK para cambiar",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = uTVColors.TextSecondary,
+                        )
+                    }
+                    Text(
+                        text = "▶ / BACK para salir",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = uTVColors.TextSecondary,
+                    )
+                }
 
                 // ── Category filter tabs ──────────────────────────────────────
                 LazyRow(
@@ -120,36 +156,51 @@ fun MiniGuideOverlay(
                     modifier = Modifier.padding(horizontal = 16.dp),
                 ) {
                     item {
-                        CategoryTab(
+                        MiniGuideCategoryTab(
                             label = "Todos",
                             isSelected = activeCategory == null,
                             onClick = { activeCategory = null },
+                            onClose = onClose,
                         )
                     }
-                    items(Category.entries.filter { it != Category.UNDEFINED }) { category ->
-                        CategoryTab(
+                    items(Category.entries.filter { it != Category.UNDEFINED }.size) { index ->
+                        val category = Category.entries.filter { it != Category.UNDEFINED }[index]
+                        MiniGuideCategoryTab(
                             label = category.displayName,
                             isSelected = activeCategory == category,
                             onClick = { activeCategory = category },
+                            onClose = onClose,
                         )
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
 
                 // ── Channel list ──────────────────────────────────────────────
                 LazyColumn(
                     state = listState,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
-                    items(filteredChannels, key = { it.id }) { channel ->
+                    itemsIndexed(
+                        items = filteredChannels,
+                        key = { _, channel -> channel.id },
+                    ) { index, channel ->
+                        val isActive = channel.id == currentChannelId
+                        val itemFocusRequester = when {
+                            isActive -> activeItemFocusRequester
+                            index == 0 -> firstItemFocusRequester
+                            else -> null
+                        }
+
                         MiniGuideChannelRow(
                             channel = channel,
-                            isActive = channel.id == currentChannelId,
+                            isActive = isActive,
+                            focusRequester = itemFocusRequester,
                             onClick = { onChannelSelected(channel) },
+                            onClose = onClose,
                         )
                     }
                 }
@@ -161,22 +212,45 @@ fun MiniGuideOverlay(
 // ── Private sub-components ────────────────────────────────────────────────────
 
 @Composable
-private fun CategoryTab(
+private fun MiniGuideCategoryTab(
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit,
+    onClose: () -> Unit,
 ) {
+    var isFocused by remember { mutableStateOf(false) }
+
     Surface(
-        color = if (isSelected) uTVColors.AccentElectricBlue
-        else uTVColors.SurfaceCard,
+        color = when {
+            isFocused -> uTVColors.AccentElectricBlue.copy(alpha = 0.40f)
+            isSelected -> uTVColors.AccentElectricBlue
+            else -> uTVColors.SurfaceCard
+        },
         shape = RoundedCornerShape(50.dp),
-        modifier = Modifier.clickable(onClick = onClick),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isFocused) 2.dp else 1.dp,
+            color = if (isFocused) uTVColors.AccentElectricBlue else Color.Transparent,
+        ),
+        modifier = Modifier
+            .scale(if (isFocused) 1.05f else 1.0f)
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .clickable(onClick = onClick)
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
+                    if (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        onClose()
+                        return@onKeyEvent true
+                    }
+                }
+                false
+            },
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (isSelected) uTVColors.TextPrimary else uTVColors.TextSecondary,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = if (isSelected || isFocused) Color.White else uTVColors.TextSecondary,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
     }
 }
@@ -185,67 +259,134 @@ private fun CategoryTab(
 private fun MiniGuideChannelRow(
     channel: Channel,
     isActive: Boolean,
+    focusRequester: FocusRequester?,
     onClick: () -> Unit,
+    onClose: () -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isActive) uTVColors.AccentElectricBlue.copy(alpha = 0.2f)
-                else uTVColors.SurfaceCard.copy(alpha = 0f),
-            )
-            .border(
-                width = if (isActive) 1.dp else 0.dp,
-                color = if (isActive) uTVColors.AccentElectricBlue else uTVColors.BorderSubtle,
-                shape = RoundedCornerShape(8.dp),
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-    ) {
-        // Dial number
-        Text(
-            text = channel.dialNumber.toString(),
-            style = MaterialTheme.typography.labelSmall,
-            color = if (isActive) uTVColors.AccentElectricBlue else uTVColors.TextSecondary,
-            modifier = Modifier.width(32.dp),
-        )
+    var isFocused by remember { mutableStateOf(false) }
 
-        // Logo
-        Surface(
-            modifier = Modifier.size(32.dp),
-            color = uTVColors.BackgroundSecondary,
-            shape = RoundedCornerShape(4.dp),
-        ) {
-            if (channel.logoUrl != null) {
-                val context = LocalContext.current
-                val imageRequest = remember(channel.logoUrl) {
-                    ImageRequest.Builder(context)
-                        .data(channel.logoUrl)
-                        .size(64, 64)
-                        .crossfade(true)
-                        .build()
+    val rowModifier = Modifier
+        .fillMaxWidth()
+        .scale(if (isFocused) 1.03f else 1.0f)
+        .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
+        .onFocusChanged { isFocused = it.isFocused }
+        .focusable()
+        .clickable(onClick = onClick)
+        .onKeyEvent { keyEvent ->
+            if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
+                when (keyEvent.nativeKeyEvent.keyCode) {
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        onClose()
+                        true
+                    }
+                    KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                        onClick()
+                        true
+                    }
+                    else -> false
                 }
-                AsyncImage(
-                    model = imageRequest,
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.padding(4.dp),
+            } else false
+        }
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = when {
+            isFocused -> uTVColors.AccentElectricBlue.copy(alpha = 0.35f)
+            isActive -> uTVColors.AccentElectricBlue.copy(alpha = 0.15f)
+            else -> uTVColors.SurfaceCard.copy(alpha = 0.5f)
+        },
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isFocused) 2.dp else if (isActive) 1.dp else 0.dp,
+            color = when {
+                isFocused -> uTVColors.AccentElectricBlue
+                isActive -> uTVColors.AccentElectricBlue.copy(alpha = 0.6f)
+                else -> Color.Transparent
+            },
+        ),
+        modifier = rowModifier,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            // Dial number badge
+            Surface(
+                color = if (isFocused || isActive) uTVColors.AccentElectricBlue else uTVColors.SurfaceCard,
+                shape = RoundedCornerShape(4.dp),
+            ) {
+                Text(
+                    text = channel.dialNumber.toString(),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                    ),
+                    color = if (isFocused || isActive) Color.White else uTVColors.TextSecondary,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // Channel Logo
+            Surface(
+                modifier = Modifier.size(32.dp),
+                color = uTVColors.BackgroundSecondary,
+                shape = RoundedCornerShape(4.dp),
+            ) {
+                if (!channel.logoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = channel.logoUrl,
+                        contentDescription = channel.name,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.padding(3.dp),
+                    )
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = channel.name.take(2).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = uTVColors.TextSecondary,
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // Channel Name & Live state
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = channel.name,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = if (isFocused || isActive) FontWeight.Bold else FontWeight.Normal,
+                    ),
+                    color = if (isFocused) Color.White else if (isActive) uTVColors.AccentElectricBlue else uTVColors.TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (isActive) {
+                    Text(
+                        text = "● EN VIVO AHORA",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = uTVColors.AccentAnimeOrange,
+                    )
+                }
+            }
+
+            // Favorite star badge
+            if (channel.isFavorite) {
+                Text(
+                    text = "★",
+                    color = uTVColors.FavoriteGold,
+                    fontSize = 15.sp,
+                    modifier = Modifier.padding(start = 6.dp),
                 )
             }
         }
-
-        Spacer(Modifier.width(8.dp))
-
-        // Name
-        Text(
-            text = channel.name,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (isActive) uTVColors.TextPrimary else uTVColors.TextSecondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
     }
 }
