@@ -5,7 +5,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 /**
  * Downloads the raw M3U playlist content over HTTP using OkHttp.
@@ -18,39 +17,47 @@ class M3UDownloader(
 ) {
     companion object {
         const val PLAYLIST_URL = "https://iptv-org.github.io/iptv/languages/spa.m3u"
+        val FALLBACK_URLS = listOf(
+            "https://iptv-org.github.io/iptv/languages/spa.m3u",
+            "http://iptv-org.github.io/iptv/languages/spa.m3u",
+            "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/spa.m3u",
+        )
 
-        private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .followRedirects(true)
-            .build()
+        private fun defaultClient(): OkHttpClient = TolerantHttpClientFactory.create()
     }
 
     /**
      * Downloads the playlist and returns its raw UTF-8 content.
+     * Retries mirrors automatically if SSL handshake or CDN fails.
+     *
      * @return [Result.success] with the raw string, or [Result.failure] with the cause.
      */
     suspend fun download(url: String = PLAYLIST_URL): Result<String> =
         withContext(Dispatchers.IO) {
-            try {
-                val request = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", "uTV/1.0 (Android IPTV)")
-                    .build()
+            val urlsToTry = if (url == PLAYLIST_URL) FALLBACK_URLS else listOf(url)
+            var lastException: Exception? = null
 
-                val response = okHttpClient.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    return@withContext Result.failure(
-                        IOException("HTTP ${response.code}: ${response.message}")
-                    )
+            for (targetUrl in urlsToTry) {
+                try {
+                    val request = Request.Builder()
+                        .url(targetUrl)
+                        .header("User-Agent", "uTV/1.0 (Android IPTV)")
+                        .build()
+
+                    val response = okHttpClient.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrBlank()) {
+                            return@withContext Result.success(body)
+                        }
+                    } else {
+                        lastException = IOException("HTTP ${response.code}: ${response.message} from $targetUrl")
+                    }
+                } catch (e: Exception) {
+                    lastException = e
                 }
-
-                val body = response.body?.string()
-                    ?: return@withContext Result.failure(IOException("Empty response body"))
-
-                Result.success(body)
-            } catch (e: Exception) {
-                Result.failure(e)
             }
+
+            Result.failure(lastException ?: IOException("Failed to download playlist from all mirrors"))
         }
 }

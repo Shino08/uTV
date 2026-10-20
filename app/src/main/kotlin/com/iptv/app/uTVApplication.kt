@@ -10,10 +10,10 @@ import com.iptv.app.core.database.ChannelDatabase
 import com.iptv.app.core.datastore.AppPreferencesDataStore
 import com.iptv.app.core.network.ChannelRepository
 import com.iptv.app.core.network.M3UDownloader
+import com.iptv.app.core.network.TolerantHttpClientFactory
 import com.iptv.app.core.player.ExoPlayerManager
 import com.iptv.app.core.player.PlayerProvider
 import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
 
 /**
  * Application class — manual DI container (no Hilt/Dagger to keep the project serverless and
@@ -27,10 +27,7 @@ class uTVApplication : Application(), PlayerProvider, ImageLoaderFactory {
     // ── Networking ─────────────────────────────────────────────────────────
 
     val okHttpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .build()
+        TolerantHttpClientFactory.create()
     }
 
     // ── Persistence ─────────────────────────────────────────────────────────
@@ -67,6 +64,7 @@ class uTVApplication : Application(), PlayerProvider, ImageLoaderFactory {
 
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)
+            .okHttpClient(okHttpClient)
             .memoryCache {
                 MemoryCache.Builder(this)
                     .maxSizePercent(0.25)
