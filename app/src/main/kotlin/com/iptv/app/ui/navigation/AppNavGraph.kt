@@ -6,11 +6,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.iptv.app.ui.mobile.MobileHomeScreen
 import com.iptv.app.ui.mobile.MobilePlayerScreen
+import com.iptv.app.ui.splash.SplashScreen
 import com.iptv.app.ui.tv.TvHomeScreen
 import com.iptv.app.ui.tv.TvPlayerScreen
 
 /** Route constants — single source of truth, avoids string literals across the codebase. */
 object Routes {
+    const val SPLASH = "splash"
     const val HOME = "home"
     const val PLAYER = "player/{channelId}"
 
@@ -28,8 +30,18 @@ fun AppNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Routes.HOME,
+        startDestination = Routes.SPLASH,
     ) {
+        composable(Routes.SPLASH) {
+            SplashScreen(
+                onSplashFinished = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                },
+                isTV = isTV,
+            )
+        }
         composable(Routes.HOME) {
             if (isTV) {
                 TvHomeScreen(
