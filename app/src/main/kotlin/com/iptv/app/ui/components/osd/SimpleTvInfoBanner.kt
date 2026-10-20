@@ -7,6 +7,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,8 +43,9 @@ import com.iptv.app.core.model.Channel
 import com.iptv.app.core.model.StreamQuality
 import com.iptv.app.ui.theme.uTVColors
 import kotlinx.coroutines.delay
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 /**
  * OSD info bar following guidelines.md §4.3.
@@ -122,6 +124,7 @@ fun SimpleTvInfoBanner(
                     quality = quality,
                     isFavorite = channel.isFavorite,
                     onFavoriteClick = onFavoriteClick,
+                    isVisible = isVisible,
                 )
             }
         }
@@ -216,14 +219,15 @@ private fun OsdRightBlock(
     quality: StreamQuality,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
+    isVisible: Boolean,
 ) {
     Column(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // Current time
-        val time = remember {
-            LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+        val time = remember(isVisible) {
+            SimpleDateFormat("HH:mm", Locale.getDefault()).format(Calendar.getInstance().time)
         }
         Text(
             text = time,
@@ -253,7 +257,8 @@ private fun OsdRightBlock(
             tint = if (isFavorite) uTVColors.FavoriteGold else uTVColors.TextSecondary,
             modifier = Modifier
                 .size(24.dp)
-                .clip(RoundedCornerShape(50.dp)),
+                .clip(RoundedCornerShape(50.dp))
+                .clickable { onFavoriteClick() },
         )
     }
 }

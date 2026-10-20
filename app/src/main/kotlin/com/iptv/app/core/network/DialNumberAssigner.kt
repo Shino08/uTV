@@ -22,13 +22,13 @@ import com.iptv.app.core.model.Channel
 object DialNumberAssigner {
 
     fun assign(channels: List<Channel>): List<Channel> {
-        // Per-category sequential counter (starts at range base + 1 so base is the anchor)
-        val counters = mutableMapOf<Category, Int>()
+        // Per-dial-range sequential counter (key by dialRangeStart so shared ranges like ANIMATION & KIDS don't duplicate dials)
+        val counters = mutableMapOf<Int, Int>()
 
         return channels.map { channel ->
             val rangeStart = channel.category.dialRangeStart
-            val current = counters.getOrDefault(channel.category, rangeStart)
-            counters[channel.category] = current + 1
+            val current = counters.getOrDefault(rangeStart, rangeStart)
+            counters[rangeStart] = current + 1
             channel.copy(dialNumber = current)
         }
     }

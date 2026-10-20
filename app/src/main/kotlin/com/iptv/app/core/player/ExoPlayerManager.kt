@@ -1,11 +1,14 @@
 package com.iptv.app.core.player
 
 import android.content.Context
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -32,6 +35,7 @@ import java.util.concurrent.TimeUnit
  * - Emits typed [StreamErrorState] without releasing the player (zapping-friendly).
  * - 8-second connection watchdog triggers [StreamErrorState.OffAir].
  */
+@OptIn(UnstableApi::class)
 class ExoPlayerManager(
     private val context: Context,
     private val okHttpClient: OkHttpClient,
@@ -81,9 +85,7 @@ class ExoPlayerManager(
 
             override fun onPlayerError(error: PlaybackException) {
                 watchdogJob?.cancel()
-                val httpCode = error.cause
-                    ?.let { it as? androidx.media3.datasource.HttpDataSourceException }
-                    ?.response?.code
+                val httpCode = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
 
                 _errorState.value = when (httpCode) {
                     403  -> StreamErrorState.GeoBlocked

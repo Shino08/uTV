@@ -23,3 +23,6 @@ Antes de proponer, crear o modificar cualquier archivo del proyecto, **DEBES lee
    - Las tarjetas de canales (`ChannelCard`), píldoras de categorías (`CategoryHubPill`) y el banner de sintonización (`SimpleTvInfoBanner`) deben ser componentes únicos reutilizables y parametrizados.
 4. **Control de Versiones (Commits Seguros):**
    - Al finalizar una tarea funcional (ej. parser M3U funcionando, base de datos Room compilando o pantalla Home terminada), sugiere un mensaje de *commit* semántico (`feat:`, `fix:`, `ui:`, `refactor:`) para crear un punto de restauración seguro antes del siguiente paso.
+5. **Restricción de Terminal y Compilación en Windows:**
+   - PROHIBIDO ejecutar comandos de PowerShell como `Get-Process`, `Stop-Process`, `tasklist` o tuberías (`|`) para buscar instancias de `java` o del demonio de Gradle.
+   - Si necesitas validar la compilación mediante terminal, ejecuta únicamente `.\gradlew.bat compileDebugKotlin --no-daemon` una sola vez. Si falla, lee el stacktrace y corrige el código Kotlin directamente sin modificar `gradle.properties` ni buscar rutas de JDK.

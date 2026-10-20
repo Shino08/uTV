@@ -8,7 +8,7 @@ import com.iptv.app.core.database.entity.UserChannelPrefEntity
 @Database(
     entities = [ChannelEntity::class, UserChannelPrefEntity::class],
     version = 1,
-    exportSchema = true,         // Schema exported to app/schemas/ for migrations
+    exportSchema = false,
 )
 abstract class ChannelDatabase : RoomDatabase() {
     abstract fun channelDao(): ChannelDao

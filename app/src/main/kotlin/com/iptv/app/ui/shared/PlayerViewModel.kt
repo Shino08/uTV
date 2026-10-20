@@ -9,8 +9,10 @@ import com.iptv.app.core.model.StreamErrorState
 import com.iptv.app.core.model.StreamQuality
 import com.iptv.app.core.player.ExoPlayerManager
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -35,6 +37,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    /** Full channel list ordered by dialNumber, consumed for zapping and MiniGuide. */
+    val allChannels: StateFlow<List<Channel>> = repository.observeAllChannels()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Expose the ExoPlayer instance for the Compose PlayerView integration. */
     val player get() = playerManager.player
@@ -64,16 +70,46 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun loadChannel(channelId: String) {
+        viewModelScope.launch {
+            val channel = repository.getChannelById(channelId)
+            if (channel != null) {
+                playChannel(channel)
+            }
+        }
+    }
+
     fun playChannel(channel: Channel) {
         _uiState.update {
             it.copy(
                 currentChannel = channel,
                 errorState = null,
                 isOsdVisible = true,
+                isMiniGuideVisible = false,
             )
         }
         playerManager.play(channel)
         viewModelScope.launch { repository.recordWatch(channel.tvgId) }
+    }
+
+    /** Zaps to the next channel in the sorted channel list (dial + 1 / next index). */
+    fun zapNext() {
+        val channels = allChannels.value
+        if (channels.isEmpty()) return
+        val current = _uiState.value.currentChannel
+        val currentIndex = channels.indexOfFirst { it.id == current?.id }
+        val nextIndex = if (currentIndex in 0 until channels.lastIndex) currentIndex + 1 else 0
+        playChannel(channels[nextIndex])
+    }
+
+    /** Zaps to the previous channel in the sorted channel list (dial - 1 / previous index). */
+    fun zapPrevious() {
+        val channels = allChannels.value
+        if (channels.isEmpty()) return
+        val current = _uiState.value.currentChannel
+        val currentIndex = channels.indexOfFirst { it.id == current?.id }
+        val prevIndex = if (currentIndex > 0) currentIndex - 1 else channels.lastIndex
+        playChannel(channels[prevIndex])
     }
 
     fun toggleOsd() {
@@ -84,14 +120,34 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(isOsdVisible = true) }
     }
 
+    fun dismissOsd() {
+        _uiState.update { it.copy(isOsdVisible = false) }
+    }
+
     fun toggleMiniGuide() {
         _uiState.update { it.copy(isMiniGuideVisible = !it.isMiniGuideVisible) }
     }
 
+    fun closeMiniGuide() {
+        _uiState.update { it.copy(isMiniGuideVisible = false) }
+    }
+
     fun toggleFavorite() {
         val channel = _uiState.value.currentChannel ?: return
+        val newFav = !channel.isFavorite
+        _uiState.update { it.copy(currentChannel = channel.copy(isFavorite = newFav)) }
         viewModelScope.launch {
             repository.toggleFavorite(channel.tvgId, channel.isFavorite)
         }
+    }
+
+    fun retryCurrentChannel() {
+        val channel = _uiState.value.currentChannel ?: return
+        playChannel(channel)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Do not release playerManager here as it is application-scoped and shared with background playback
     }
 }

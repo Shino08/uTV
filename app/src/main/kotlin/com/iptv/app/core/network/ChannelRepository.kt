@@ -104,6 +104,12 @@ class ChannelRepository(
                 channels.map { it.toDomain(isFavorite = it.tvgId in favoriteIds) }
             }
 
+    suspend fun getChannelById(id: String): Channel? = withContext(Dispatchers.IO) {
+        val entity = dao.getChannelById(id) ?: return@withContext null
+        val pref = dao.getPrefByTvgId(entity.tvgId)
+        entity.toDomain(isFavorite = pref?.isFavorite == true, pref = pref)
+    }
+
     // ── User actions ──────────────────────────────────────────────────────────
 
     suspend fun toggleFavorite(tvgId: String, currentValue: Boolean) {

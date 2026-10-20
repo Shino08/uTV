@@ -63,6 +63,7 @@ fun ChannelCard(
     onClick: () -> Unit,
     onFavorite: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocus: (() -> Unit)? = null,
 ) {
     val isTV = LocalIsTV.current
     var isFocused by remember { mutableStateOf(false) }
@@ -89,7 +90,10 @@ fun ChannelCard(
                 color = borderColor,
                 shape = RoundedCornerShape(12.dp),
             )
-            .onFocusChanged { isFocused = it.isFocused }
+            .onFocusChanged {
+                isFocused = it.isFocused
+                if (it.isFocused) onFocus?.invoke()
+            }
             .focusable()
             .clickable(onClick = onClick),
         color = uTVColors.SurfaceCard,

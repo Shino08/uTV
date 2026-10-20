@@ -5,19 +5,19 @@ kotlin                  = "2.1.10"
 ksp                     = "2.1.10-1.0.31"
 
 # AndroidX core
-coreKtx                 = "1.16.0"
-lifecycleRuntimeKtx     = "2.9.1"
+coreKtx                 = "1.15.0"
+lifecycleRuntimeKtx     = "2.8.7"
 activityCompose         = "1.10.1"
 
 # Compose BOM (pins all compose.* versions together)
-composeBom              = "2025.05.01"
+composeBom              = "2025.02.00"
 
 # Compose for TV
-tvMaterial              = "1.1.0"
-tvFoundation            = "1.0.0"
+tvMaterial              = "1.0.0"
+tvFoundation            = "1.0.0-alpha11"
 
 # Media3 / ExoPlayer
-media3                  = "1.9.0"
+media3                  = "1.5.1"
 
 # Networking
 okhttp                  = "4.12.0"
@@ -29,16 +29,16 @@ coil                    = "2.7.0"
 room                    = "2.7.1"
 
 # DataStore
-datastore               = "1.1.4"
+datastore               = "1.1.2"
 
 # Kotlinx Serialization (for any JSON parsing utilities)
-kotlinxSerialization    = "1.8.1"
+kotlinxSerialization    = "1.8.0"
 
 # Coroutines
-coroutines              = "1.10.2"
+coroutines              = "1.10.1"
 
 # Navigation Compose
-navigationCompose       = "2.9.0"
+navigationCompose       = "2.8.7"
 
 # Splash Screen
 splashscreen            = "1.0.1"

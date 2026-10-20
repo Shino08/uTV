@@ -8,22 +8,16 @@ plugins {
 
 android {
     namespace = "com.iptv.app"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.iptv.app"
         minSdk = 21          // Android 5.0 — covers all Android TV boxes
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Room schema export for version migrations
-        ksp {
-            arg("room.schemaLocation", "$projectDir/schemas")
-            arg("room.incremental", "true")
-        }
     }
 
     buildTypes {
@@ -48,18 +42,16 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
-        // Enable K2 compiler checks
-        freeCompilerArgs += listOf("-Xcontext-receivers")
+        freeCompilerArgs += listOf(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.tv.material3.ExperimentalTvMaterial3Api",
+            "-opt-in=androidx.media3.common.util.UnstableApi"
+        )
     }
 
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    // Leanback feature declaration for TV detection
-    defaultConfig {
-        // TV launcher intent filter needs this in the manifest, not here
     }
 
     packaging {

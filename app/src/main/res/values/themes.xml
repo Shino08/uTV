@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Base theme — Activity uses Theme.uTV.Splash via the splash screen API -->
-    <style name="Theme.uTV" parent="android:Theme.Material.NoTitleBar">
+    <style name="Theme.uTV" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/background_primary</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>

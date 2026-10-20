@@ -77,101 +77,103 @@ fun HeroFeaturedBanner(
         ) {
             channel ?: return@AnimatedVisibility
 
-            // ── Background art ────────────────────────────────────────────────
-            AsyncImage(
-                model = channel.logoUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-
-            // ── Gradient scrim (left side) ─────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colorStops = arrayOf(
-                                0.0f to uTVColors.BackgroundPrimary,
-                                0.55f to uTVColors.BackgroundPrimary.copy(alpha = 0.85f),
-                                1.0f to Color.Transparent,
-                            ),
-                        )
-                    ),
-            )
-
-            // ── Content ───────────────────────────────────────────────────────
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = if (isTV) 48.dp else 24.dp, end = 120.dp)
-                    .fillMaxWidth(0.6f),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                // Category pill
-                Surface(
-                    color = channel.category.heroAccentColor(),
-                    shape = RoundedCornerShape(50.dp),
-                ) {
-                    Text(
-                        text = channel.category.displayName.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = uTVColors.TextPrimary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Channel name
-                Text(
-                    text = channel.name,
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = if (isTV) 32.sp else 24.sp,
-                    ),
-                    color = uTVColors.TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+            Box(modifier = Modifier.fillMaxSize()) {
+                // ── Background art ────────────────────────────────────────────────
+                AsyncImage(
+                    model = channel.logoUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
                 )
 
-                Spacer(Modifier.height(4.dp))
-
-                // Country + Dial
-                Text(
-                    text = "${channel.countryCode}  •  Canal ${channel.dialNumber}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = uTVColors.TextSecondary,
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                // CTA row
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Button(
-                        onClick = onPlayClick,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = uTVColors.AccentElectricBlue,
-                            contentColor = uTVColors.TextPrimary,
+                // ── Gradient scrim (left side) ─────────────────────────────────────
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to uTVColors.BackgroundPrimary,
+                                    0.55f to uTVColors.BackgroundPrimary.copy(alpha = 0.85f),
+                                    1.0f to Color.Transparent,
+                                ),
+                            )
                         ),
-                        shape = RoundedCornerShape(8.dp),
+                )
+
+                // ── Content ───────────────────────────────────────────────────────
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = if (isTV) 48.dp else 24.dp, end = 120.dp)
+                        .fillMaxWidth(0.6f),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    // Category pill
+                    Surface(
+                        color = channel.category.heroAccentColor(),
+                        shape = RoundedCornerShape(50.dp),
                     ) {
                         Text(
-                            text = "▶  Ver ahora",
-                            style = MaterialTheme.typography.titleMedium,
+                            text = channel.category.displayName.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = uTVColors.TextPrimary,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         )
                     }
 
-                    IconButton(onClick = onFavoriteClick) {
-                        Icon(
-                            imageVector = if (channel.isFavorite) Icons.Filled.Star
-                            else Icons.Outlined.StarBorder,
-                            contentDescription = "Favorite",
-                            tint = if (channel.isFavorite) uTVColors.FavoriteGold
-                            else uTVColors.TextSecondary,
-                        )
+                    Spacer(Modifier.height(8.dp))
+
+                    // Channel name
+                    Text(
+                        text = channel.name,
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = if (isTV) 32.sp else 24.sp,
+                        ),
+                        color = uTVColors.TextPrimary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // Country + Dial
+                    Text(
+                        text = "${channel.countryCode}  •  Canal ${channel.dialNumber}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = uTVColors.TextSecondary,
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // CTA row
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Button(
+                            onClick = onPlayClick,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = uTVColors.AccentElectricBlue,
+                                contentColor = uTVColors.TextPrimary,
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text(
+                                text = "▶  Ver ahora",
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
+
+                        IconButton(onClick = onFavoriteClick) {
+                            Icon(
+                                imageVector = if (channel.isFavorite) Icons.Filled.Star
+                                else Icons.Outlined.StarBorder,
+                                contentDescription = "Favorite",
+                                tint = if (channel.isFavorite) uTVColors.FavoriteGold
+                                else uTVColors.TextSecondary,
+                            )
+                        }
                     }
                 }
             }
