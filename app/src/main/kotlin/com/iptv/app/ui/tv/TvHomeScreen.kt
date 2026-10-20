@@ -1,5 +1,6 @@
 package com.iptv.app.ui.tv
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -100,9 +101,13 @@ fun TvHomeScreen(
     val favorites by viewModel.favorites.collectAsState()
     val recentlyWatched by viewModel.recentlyWatched.collectAsState()
 
-    var selectedSection by remember { mutableStateOf(TvSection.HOME) }
+    val selectedSection = uiState.selectedTvSection
     var focusedChannel by remember { mutableStateOf<Channel?>(null) }
     var showCountrySelector by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = selectedSection != TvSection.HOME) {
+        viewModel.setTvSection(TvSection.HOME)
+    }
 
     // Fallback featured channel when no card has explicit focus
     val defaultFeatured = remember(allChannels, recentlyWatched) {
@@ -169,7 +174,7 @@ fun TvHomeScreen(
                     TvTopNavigationBar(
                         currentSection = selectedSection,
                         onSectionSelected = { newSection ->
-                            selectedSection = newSection
+                            viewModel.setTvSection(newSection)
                             if (newSection != TvSection.HOME) {
                                 viewModel.setActiveCategory(null)
                                 viewModel.setActiveCountry(null)
@@ -201,7 +206,7 @@ fun TvHomeScreen(
                                 onChannelSelect = handleChannelSelect,
                                 onFavoriteToggle = { viewModel.toggleFavorite(it) },
                                 onChannelFocus = { focusedChannel = it },
-                                onAnimeHubClick = { selectedSection = TvSection.ANIME },
+                                onAnimeHubClick = { viewModel.setTvSection(TvSection.ANIME) },
                                 onMoviesClick = {
                                     viewModel.setActiveCountry(null)
                                     viewModel.setActiveCategory(
@@ -215,7 +220,7 @@ fun TvHomeScreen(
                                     )
                                 },
                                 onCountryClick = { showCountrySelector = !showCountrySelector },
-                                onFavoritesClick = { selectedSection = TvSection.FAVORITES },
+                                onFavoritesClick = { viewModel.setTvSection(TvSection.FAVORITES) },
                                 onCountrySelected = { code ->
                                     viewModel.setActiveCountry(code)
                                     showCountrySelector = false
@@ -232,6 +237,9 @@ fun TvHomeScreen(
 
                             TvSection.SEARCH -> TvSearchContent(
                                 allChannels = allChannels,
+                                initialQuery = uiState.tvSearchQuery,
+                                initialFilterLabel = uiState.tvSelectedFilterLabel,
+                                onSearchChange = { q, f -> viewModel.setTvSearchState(q, f) },
                                 onChannelSelect = handleChannelSelect,
                                 onFavoriteToggle = { viewModel.toggleFavorite(it) },
                                 onChannelFocus = { focusedChannel = it },
@@ -239,6 +247,8 @@ fun TvHomeScreen(
 
                             TvSection.ANIME -> TvAnimeHubContent(
                                 animeChannels = allChannels,
+                                selectedHubId = uiState.tvSelectedHubId,
+                                onHubSelected = { id -> viewModel.setTvSelectedHubId(id) },
                                 onChannelSelect = handleChannelSelect,
                                 onFavoriteToggle = { viewModel.toggleFavorite(it) },
                                 onChannelFocus = { focusedChannel = it },
@@ -249,7 +259,7 @@ fun TvHomeScreen(
                                 onChannelSelect = handleChannelSelect,
                                 onFavoriteToggle = { viewModel.toggleFavorite(it) },
                                 onChannelFocus = { focusedChannel = it },
-                                onExploreGuide = { selectedSection = TvSection.HOME },
+                                onExploreGuide = { viewModel.setTvSection(TvSection.HOME) },
                             )
                         }
                     }
@@ -644,13 +654,13 @@ private data class SearchQuickFilter(
 @Composable
 private fun TvSearchContent(
     allChannels: List<Channel>,
+    initialQuery: String = "",
+    initialFilterLabel: String? = null,
+    onSearchChange: (String, String?) -> Unit = { _, _ -> },
     onChannelSelect: (Channel) -> Unit,
     onFavoriteToggle: (Channel) -> Unit,
     onChannelFocus: (Channel) -> Unit,
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf<SearchQuickFilter?>(null) }
-
     val quickFilters = remember {
         listOf(
             SearchQuickFilter("🔥 Anime & Geek", category = Category.ANIMATION),
@@ -667,6 +677,11 @@ private fun TvSearchContent(
             SearchQuickFilter("🇵🇪 Perú", countryCode = "PE"),
             SearchQuickFilter("🇪🇸 España", countryCode = "ES"),
         )
+    }
+
+    var searchQuery by remember(initialQuery) { mutableStateOf(initialQuery) }
+    var selectedFilter by remember(initialFilterLabel) {
+        mutableStateOf(quickFilters.firstOrNull { it.label == initialFilterLabel })
     }
 
     val searchResults = remember(allChannels, searchQuery, selectedFilter) {
@@ -715,7 +730,10 @@ private fun TvSearchContent(
 
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                    onValueChange = {
+                        searchQuery = it
+                        onSearchChange(it, selectedFilter?.label)
+                    },
                     placeholder = {
                         Text(
                             text = "Busca por canal (ej. EnerGeek, HBO, Telemundo) o dial (ej. 301)...",
@@ -732,7 +750,10 @@ private fun TvSearchContent(
                     },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
+                            IconButton(onClick = {
+                                searchQuery = ""
+                                onSearchChange("", selectedFilter?.label)
+                            }) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Limpiar",
@@ -772,7 +793,11 @@ private fun TvSearchContent(
                         TvCategoryFilterChip(
                             label = filter.label,
                             isSelected = isSelected,
-                            onClick = { selectedFilter = if (isSelected) null else filter },
+                            onClick = {
+                                val nextFilter = if (isSelected) null else filter
+                                selectedFilter = nextFilter
+                                onSearchChange(searchQuery, nextFilter?.label)
+                            },
                         )
                     }
                 }
@@ -876,6 +901,8 @@ private data class BrandHubCollection(
 @Composable
 private fun TvAnimeHubContent(
     animeChannels: List<Channel>, // Pass `allChannels` here from TvHomeScreen
+    selectedHubId: String? = null,
+    onHubSelected: (String?) -> Unit = {},
     onChannelSelect: (Channel) -> Unit,
     onFavoriteToggle: (Channel) -> Unit,
     onChannelFocus: (Channel) -> Unit,
@@ -944,7 +971,6 @@ private fun TvAnimeHubContent(
         ).filter { it.channels.isNotEmpty() }
     }
 
-    var selectedHubId by remember { mutableStateOf<String?>(null) }
     val activeHub = remember(hubCollections, selectedHubId) {
         hubCollections.firstOrNull { it.id == selectedHubId }
     }
@@ -980,14 +1006,14 @@ private fun TvAnimeHubContent(
                         TvCategoryFilterChip(
                             label = "Todos los Hubs",
                             isSelected = selectedHubId == null,
-                            onClick = { selectedHubId = null },
+                            onClick = { onHubSelected(null) },
                         )
                     }
                     items(hubCollections, key = { it.id }) { hub ->
                         TvCategoryFilterChip(
                             label = "${hub.title} (${hub.channels.size})",
                             isSelected = selectedHubId == hub.id,
-                            onClick = { selectedHubId = if (selectedHubId == hub.id) null else hub.id },
+                            onClick = { onHubSelected(if (selectedHubId == hub.id) null else hub.id) },
                         )
                     }
                 }

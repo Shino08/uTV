@@ -1,5 +1,6 @@
 package com.iptv.app.ui.mobile
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -110,8 +111,12 @@ fun MobileHomeScreen(
     val favorites by viewModel.favorites.collectAsState()
     val recentlyWatched by viewModel.recentlyWatched.collectAsState()
 
-    var selectedTab by remember { mutableStateOf(MobileTab.HOME) }
+    val selectedTab = uiState.selectedMobileTab
     var showCountrySheet by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = selectedTab != MobileTab.HOME) {
+        viewModel.setMobileTab(MobileTab.HOME)
+    }
 
     val handleChannelClick: (Channel) -> Unit = { channel ->
         viewModel.onChannelSelected(channel)
@@ -141,7 +146,7 @@ fun MobileHomeScreen(
                     NavigationBarItem(
                         selected = isSelected,
                         onClick = {
-                            selectedTab = tab
+                            viewModel.setMobileTab(tab)
                             if (tab != MobileTab.HOME) {
                                 viewModel.setActiveCategory(null)
                                 viewModel.setActiveCountry(null)
@@ -218,7 +223,7 @@ fun MobileHomeScreen(
                                 )
                             },
                             onCountryClick = { showCountrySheet = true },
-                            onFavoritesHubClick = { selectedTab = MobileTab.FAVORITES },
+                            onFavoritesHubClick = { viewModel.setMobileTab(MobileTab.FAVORITES) },
                             onClearFilters = {
                                 viewModel.setActiveCategory(null)
                                 viewModel.setActiveCountry(null)
@@ -227,12 +232,17 @@ fun MobileHomeScreen(
 
                         MobileTab.GUIDE -> GuideTabContent(
                             channels = allChannels,
+                            initialQuery = uiState.mobileGuideSearchQuery,
+                            initialCategoryFilter = uiState.mobileGuideCategoryFilter,
+                            onSearchChange = { q, c -> viewModel.setMobileGuideSearchState(q, c) },
                             onChannelClick = handleChannelClick,
                             onFavoriteToggle = { viewModel.toggleFavorite(it) },
                         )
 
                         MobileTab.ANIME -> AnimeHubTabContent(
                             channels = allChannels,
+                            selectedHubId = uiState.mobileSelectedHubId,
+                            onHubSelected = { id -> viewModel.setMobileSelectedHubId(id) },
                             onChannelClick = handleChannelClick,
                             onFavoriteToggle = { viewModel.toggleFavorite(it) },
                         )
@@ -619,11 +629,14 @@ private fun SectionHeader(
 @Composable
 private fun GuideTabContent(
     channels: List<Channel>,
+    initialQuery: String = "",
+    initialCategoryFilter: Category? = null,
+    onSearchChange: (String, Category?) -> Unit = { _, _ -> },
     onChannelClick: (Channel) -> Unit,
     onFavoriteToggle: (Channel) -> Unit,
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedCategoryFilter by remember { mutableStateOf<Category?>(null) }
+    var searchQuery by remember(initialQuery) { mutableStateOf(initialQuery) }
+    var selectedCategoryFilter by remember(initialCategoryFilter) { mutableStateOf(initialCategoryFilter) }
 
     val sortedChannels = remember(channels, searchQuery, selectedCategoryFilter) {
         channels
@@ -666,7 +679,10 @@ private fun GuideTabContent(
             // Search Bar
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { searchQuery = it },
+                onValueChange = {
+                    searchQuery = it
+                    onSearchChange(it, selectedCategoryFilter)
+                },
                 placeholder = {
                     Text(
                         text = "Buscar por nombre, dial (ej. 301) o país...",
@@ -683,7 +699,10 @@ private fun GuideTabContent(
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
+                        IconButton(onClick = {
+                            searchQuery = ""
+                            onSearchChange("", selectedCategoryFilter)
+                        }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Limpiar",
@@ -716,7 +735,10 @@ private fun GuideTabContent(
                     FilterChip(
                         label = "Todos",
                         isSelected = selectedCategoryFilter == null,
-                        onClick = { selectedCategoryFilter = null },
+                        onClick = {
+                            selectedCategoryFilter = null
+                            onSearchChange(searchQuery, null)
+                        },
                     )
                 }
                 items(Category.entries.filter { it != Category.UNDEFINED }) { cat ->
@@ -724,7 +746,9 @@ private fun GuideTabContent(
                         label = cat.displayName,
                         isSelected = selectedCategoryFilter == cat,
                         onClick = {
-                            selectedCategoryFilter = if (selectedCategoryFilter == cat) null else cat
+                            val nextCat = if (selectedCategoryFilter == cat) null else cat
+                            selectedCategoryFilter = nextCat
+                            onSearchChange(searchQuery, nextCat)
                         },
                     )
                 }
@@ -868,6 +892,8 @@ private data class MobileBrandHub(
 @Composable
 private fun AnimeHubTabContent(
     channels: List<Channel>,
+    selectedHubId: String? = null,
+    onHubSelected: (String?) -> Unit = {},
     onChannelClick: (Channel) -> Unit,
     onFavoriteToggle: (Channel) -> Unit,
 ) {
@@ -899,7 +925,6 @@ private fun AnimeHubTabContent(
         ).filter { it.channels.isNotEmpty() }
     }
 
-    var selectedHubId by remember { mutableStateOf<String?>(null) }
     val activeHub = remember(hubCollections, selectedHubId) {
         hubCollections.firstOrNull { it.id == selectedHubId }
     }
@@ -959,7 +984,7 @@ private fun AnimeHubTabContent(
                         Surface(
                             shape = RoundedCornerShape(20.dp),
                             color = if (isSelected) hub.accentColor else uTVColors.SurfaceCard,
-                            modifier = Modifier.clickable { selectedHubId = hub.id },
+                            modifier = Modifier.clickable { onHubSelected(hub.id) },
                         ) {
                             Text(
                                 text = "${hub.title} (${hub.channels.size})",
