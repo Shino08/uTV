@@ -146,8 +146,30 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         playChannel(channel)
     }
 
+    /** Fully stops stream, clears media items, and resets playback state. */
+    fun stopPlayback() {
+        playerManager.stop()
+        _uiState.update {
+            it.copy(
+                currentChannel = null,
+                isOsdVisible = false,
+                isMiniGuideVisible = false,
+                errorState = null,
+                isBuffering = false,
+            )
+        }
+    }
+
+    fun pausePlayback() {
+        playerManager.pause()
+    }
+
+    fun resumePlayback() {
+        playerManager.resume()
+    }
+
     override fun onCleared() {
         super.onCleared()
-        // Do not release playerManager here as it is application-scoped and shared with background playback
+        playerManager.stop()
     }
 }

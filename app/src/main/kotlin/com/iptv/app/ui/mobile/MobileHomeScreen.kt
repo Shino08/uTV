@@ -322,6 +322,15 @@ private fun HomeTabContent(
         }
     }
 
+    // Pre-filter category carousels once per channel sync to eliminate UI thread lag when scrolling
+    val animeChannels = remember(allChannels) { allChannels.filter { it.category == Category.ANIMATION } }
+    val moviesChannels = remember(allChannels) { allChannels.filter { it.category == Category.MOVIES } }
+    val sportsChannels = remember(allChannels) { allChannels.filter { it.category == Category.SPORTS } }
+    val generalChannels = remember(allChannels) { allChannels.filter { it.category == Category.GENERAL } }
+    val musicChannels = remember(allChannels) { allChannels.filter { it.category == Category.MUSIC } }
+    val newsChannels = remember(allChannels) { allChannels.filter { it.category == Category.NEWS } }
+    val kidsChannels = remember(allChannels) { allChannels.filter { it.category == Category.KIDS } }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 24.dp),
@@ -448,7 +457,6 @@ private fun HomeTabContent(
             }
 
             // Category carousels
-            val animeChannels = allChannels.filter { it.category == Category.ANIMATION }
             if (animeChannels.isNotEmpty()) {
                 item(key = "section_anime") {
                     ChannelCarouselSection(
@@ -461,7 +469,6 @@ private fun HomeTabContent(
                 }
             }
 
-            val moviesChannels = allChannels.filter { it.category == Category.MOVIES }
             if (moviesChannels.isNotEmpty()) {
                 item(key = "section_movies") {
                     ChannelCarouselSection(
@@ -473,7 +480,6 @@ private fun HomeTabContent(
                 }
             }
 
-            val sportsChannels = allChannels.filter { it.category == Category.SPORTS }
             if (sportsChannels.isNotEmpty()) {
                 item(key = "section_sports") {
                     ChannelCarouselSection(
@@ -485,7 +491,6 @@ private fun HomeTabContent(
                 }
             }
 
-            val generalChannels = allChannels.filter { it.category == Category.GENERAL }
             if (generalChannels.isNotEmpty()) {
                 item(key = "section_general") {
                     ChannelCarouselSection(
@@ -497,7 +502,6 @@ private fun HomeTabContent(
                 }
             }
 
-            val musicChannels = allChannels.filter { it.category == Category.MUSIC }
             if (musicChannels.isNotEmpty()) {
                 item(key = "section_music") {
                     ChannelCarouselSection(
@@ -509,7 +513,6 @@ private fun HomeTabContent(
                 }
             }
 
-            val newsChannels = allChannels.filter { it.category == Category.NEWS }
             if (newsChannels.isNotEmpty()) {
                 item(key = "section_news") {
                     ChannelCarouselSection(
@@ -521,7 +524,6 @@ private fun HomeTabContent(
                 }
             }
 
-            val kidsChannels = allChannels.filter { it.category == Category.KIDS }
             if (kidsChannels.isNotEmpty()) {
                 item(key = "section_kids") {
                     ChannelCarouselSection(

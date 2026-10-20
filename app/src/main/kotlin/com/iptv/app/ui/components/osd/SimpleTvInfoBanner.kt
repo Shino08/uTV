@@ -36,9 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.iptv.app.core.model.Channel
 import com.iptv.app.core.model.StreamQuality
 import com.iptv.app.ui.theme.uTVColors
@@ -75,8 +77,8 @@ fun SimpleTvInfoBanner(
     visibleDurationMs: Long = 4_000L,
     modifier: Modifier = Modifier,
 ) {
-    // Auto-dismiss timer
-    LaunchedEffect(isVisible) {
+    // Auto-dismiss timer — restarts on every channel change during fast zapping
+    LaunchedEffect(isVisible, channel.id) {
         if (isVisible) {
             delay(visibleDurationMs)
             onDismiss()
@@ -153,8 +155,16 @@ private fun OsdLeftBlock(channel: Channel) {
             shape = RoundedCornerShape(8.dp),
         ) {
             if (channel.logoUrl != null) {
+                val context = LocalContext.current
+                val imageRequest = remember(channel.logoUrl) {
+                    ImageRequest.Builder(context)
+                        .data(channel.logoUrl)
+                        .size(112, 112)
+                        .crossfade(true)
+                        .build()
+                }
                 AsyncImage(
-                    model = channel.logoUrl,
+                    model = imageRequest,
                     contentDescription = channel.name,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.padding(8.dp),

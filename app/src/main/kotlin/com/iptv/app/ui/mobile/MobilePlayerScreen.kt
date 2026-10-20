@@ -120,19 +120,42 @@ fun MobilePlayerScreen(
         viewModel.loadChannel(channelId)
     }
 
-    // Monitor Picture-in-Picture mode transitions to hide/show overlays
+    val handleBack = {
+        viewModel.stopPlayback()
+        onBack()
+    }
+
+    // Monitor Lifecycle events and Picture-in-Picture mode transitions
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_RESUME) {
-                val activity = findActivity(context)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    isInPipMode = activity?.isInPictureInPictureMode == true
+            val activity = findActivity(context)
+            val inPip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                activity?.isInPictureInPictureMode == true
+            } else false
+            isInPipMode = inPip
+
+            when (event) {
+                Lifecycle.Event.ON_STOP -> {
+                    if (!inPip) {
+                        viewModel.pausePlayback()
+                    }
                 }
+                Lifecycle.Event.ON_START -> {
+                    viewModel.resumePlayback()
+                }
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            val activity = findActivity(context)
+            val inPip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                activity?.isInPictureInPictureMode == true
+            } else false
+            if (!inPip) {
+                viewModel.stopPlayback()
+            }
         }
     }
 
@@ -141,7 +164,7 @@ fun MobilePlayerScreen(
         if (uiState.isMiniGuideVisible) {
             viewModel.closeMiniGuide()
         } else {
-            onBack()
+            handleBack()
         }
     }
 
@@ -238,7 +261,7 @@ fun MobilePlayerScreen(
             ) {
                 PlayerTopBar(
                     channel = uiState.currentChannel,
-                    onBack = onBack,
+                    onBack = handleBack,
                     onMiniGuideClick = { viewModel.toggleMiniGuide() },
                     onPipClick = { enterPipMode(context) },
                     onZapPrevious = { viewModel.zapPrevious() },

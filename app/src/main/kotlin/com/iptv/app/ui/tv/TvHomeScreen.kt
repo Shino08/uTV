@@ -77,6 +77,7 @@ fun TvHomeScreen(
 
     var focusedChannel by remember { mutableStateOf<Channel?>(null) }
     var showCountrySelector by remember { mutableStateOf(false) }
+    var showOnlyFavorites by remember { mutableStateOf(false) }
 
     // Fallback featured channel when no card has explicit focus
     val defaultFeatured = remember(allChannels, recentlyWatched) {
@@ -95,18 +96,28 @@ fun TvHomeScreen(
 
     val hubPills = rememberHubPills(
         selectedCategory = uiState.activeCategory,
-        isFavoritesSelected = false,
+        isFavoritesSelected = showOnlyFavorites,
         isCountrySelected = uiState.activeCountry != null,
     )
 
-    // Filtered channels if a category or country filter is active
-    val filteredChannels = remember(allChannels, uiState.activeCategory, uiState.activeCountry) {
+    // Filtered channels if a category, country, or favorites filter is active
+    val filteredChannels = remember(allChannels, favorites, uiState.activeCategory, uiState.activeCountry, showOnlyFavorites) {
         when {
+            showOnlyFavorites              -> favorites
             uiState.activeCategory != null -> allChannels.filter { it.category == uiState.activeCategory }
             uiState.activeCountry != null  -> allChannels.filter { it.countryCode.equals(uiState.activeCountry, ignoreCase = true) }
             else                           -> null
         }
     }
+
+    // Pre-filter category carousels once per channel sync to avoid UI lag during D-Pad navigation
+    val animeChannels = remember(allChannels) { allChannels.filter { it.category == Category.ANIMATION } }
+    val moviesChannels = remember(allChannels) { allChannels.filter { it.category == Category.MOVIES } }
+    val sportsChannels = remember(allChannels) { allChannels.filter { it.category == Category.SPORTS } }
+    val generalChannels = remember(allChannels) { allChannels.filter { it.category == Category.GENERAL } }
+    val musicChannels = remember(allChannels) { allChannels.filter { it.category == Category.MUSIC } }
+    val newsChannels = remember(allChannels) { allChannels.filter { it.category == Category.NEWS } }
+    val kidsChannels = remember(allChannels) { allChannels.filter { it.category == Category.KIDS } }
 
     Box(
         modifier = modifier
@@ -154,6 +165,7 @@ fun TvHomeScreen(
                                 CategoryHubPill(
                                     data = hubPills.anime,
                                     onClick = {
+                                        showOnlyFavorites = false
                                         viewModel.setActiveCountry(null)
                                         viewModel.setActiveCategory(
                                             if (uiState.activeCategory == Category.ANIMATION) null else Category.ANIMATION
@@ -165,6 +177,7 @@ fun TvHomeScreen(
                                 CategoryHubPill(
                                     data = hubPills.movies,
                                     onClick = {
+                                        showOnlyFavorites = false
                                         viewModel.setActiveCountry(null)
                                         viewModel.setActiveCategory(
                                             if (uiState.activeCategory == Category.MOVIES) null else Category.MOVIES
@@ -176,6 +189,7 @@ fun TvHomeScreen(
                                 CategoryHubPill(
                                     data = hubPills.sports,
                                     onClick = {
+                                        showOnlyFavorites = false
                                         viewModel.setActiveCountry(null)
                                         viewModel.setActiveCategory(
                                             if (uiState.activeCategory == Category.SPORTS) null else Category.SPORTS
@@ -187,6 +201,7 @@ fun TvHomeScreen(
                                 CategoryHubPill(
                                     data = hubPills.country,
                                     onClick = {
+                                        showOnlyFavorites = false
                                         showCountrySelector = !showCountrySelector
                                     },
                                 )
@@ -195,9 +210,12 @@ fun TvHomeScreen(
                                 CategoryHubPill(
                                     data = hubPills.favorites,
                                     onClick = {
-                                        viewModel.setActiveCountry(null)
-                                        viewModel.setActiveCategory(null)
-                                        // Focus or filter favorites
+                                        showOnlyFavorites = !showOnlyFavorites
+                                        if (showOnlyFavorites) {
+                                            viewModel.setActiveCountry(null)
+                                            viewModel.setActiveCategory(null)
+                                            showCountrySelector = false
+                                        }
                                     },
                                 )
                             }
@@ -225,10 +243,15 @@ fun TvHomeScreen(
                     }
 
                     // ── 4. Active Filter Badge ───────────────────────────────
-                    if (uiState.activeCategory != null || uiState.activeCountry != null) {
+                    if (showOnlyFavorites || uiState.activeCategory != null || uiState.activeCountry != null) {
                         item(key = "tv_filter_badge") {
-                            val label = uiState.activeCategory?.displayName
-                                ?: uiState.activeCountry?.let { countryDisplayName(it) } ?: ""
+                            val label = when {
+                                showOnlyFavorites -> "Mis Canales Favoritos"
+                                uiState.activeCategory != null -> uiState.activeCategory?.displayName ?: ""
+                                else -> uiState.activeCountry?.let { countryDisplayName(it) } ?: ""
+                            }
+
+                            val badgeColor = if (showOnlyFavorites) uTVColors.FavoriteGold else uTVColors.AccentElectricBlue
 
                             Row(
                                 modifier = Modifier
@@ -237,12 +260,13 @@ fun TvHomeScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Surface(
-                                    color = uTVColors.AccentElectricBlue.copy(alpha = 0.25f),
+                                    color = badgeColor.copy(alpha = 0.25f),
                                     shape = RoundedCornerShape(50.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, uTVColors.AccentElectricBlue),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, badgeColor),
                                     modifier = Modifier
                                         .focusable()
                                         .clickable {
+                                            showOnlyFavorites = false
                                             viewModel.setActiveCategory(null)
                                             viewModel.setActiveCountry(null)
                                         },
@@ -274,9 +298,15 @@ fun TvHomeScreen(
                     if (filteredChannels != null) {
                         // Filtered view
                         item(key = "tv_filtered_header") {
+                            val sectionTitle = when {
+                                showOnlyFavorites -> "Mis Canales Favoritos"
+                                uiState.activeCategory != null -> uiState.activeCategory?.displayName ?: ""
+                                else -> "Canales de ${uiState.activeCountry}"
+                            }
                             TvSectionHeader(
-                                title = uiState.activeCategory?.displayName ?: "Canales de ${uiState.activeCountry}",
+                                title = sectionTitle,
                                 count = filteredChannels.size,
+                                accentColor = if (showOnlyFavorites) uTVColors.FavoriteGold else uTVColors.AccentElectricBlue,
                             )
                         }
 
@@ -324,7 +354,6 @@ fun TvHomeScreen(
                             }
                         }
 
-                        val animeChannels = allChannels.filter { it.category == Category.ANIMATION }
                         if (animeChannels.isNotEmpty()) {
                             item(key = "tv_section_anime") {
                                 TvChannelCarouselRow(
@@ -338,7 +367,6 @@ fun TvHomeScreen(
                             }
                         }
 
-                        val moviesChannels = allChannels.filter { it.category == Category.MOVIES }
                         if (moviesChannels.isNotEmpty()) {
                             item(key = "tv_section_movies") {
                                 TvChannelCarouselRow(
@@ -351,7 +379,6 @@ fun TvHomeScreen(
                             }
                         }
 
-                        val sportsChannels = allChannels.filter { it.category == Category.SPORTS }
                         if (sportsChannels.isNotEmpty()) {
                             item(key = "tv_section_sports") {
                                 TvChannelCarouselRow(
@@ -364,7 +391,6 @@ fun TvHomeScreen(
                             }
                         }
 
-                        val generalChannels = allChannels.filter { it.category == Category.GENERAL }
                         if (generalChannels.isNotEmpty()) {
                             item(key = "tv_section_general") {
                                 TvChannelCarouselRow(
@@ -377,7 +403,6 @@ fun TvHomeScreen(
                             }
                         }
 
-                        val musicChannels = allChannels.filter { it.category == Category.MUSIC }
                         if (musicChannels.isNotEmpty()) {
                             item(key = "tv_section_music") {
                                 TvChannelCarouselRow(
@@ -390,7 +415,6 @@ fun TvHomeScreen(
                             }
                         }
 
-                        val newsChannels = allChannels.filter { it.category == Category.NEWS }
                         if (newsChannels.isNotEmpty()) {
                             item(key = "tv_section_news") {
                                 TvChannelCarouselRow(
@@ -403,7 +427,6 @@ fun TvHomeScreen(
                             }
                         }
 
-                        val kidsChannels = allChannels.filter { it.category == Category.KIDS }
                         if (kidsChannels.isNotEmpty()) {
                             item(key = "tv_section_kids") {
                                 TvChannelCarouselRow(

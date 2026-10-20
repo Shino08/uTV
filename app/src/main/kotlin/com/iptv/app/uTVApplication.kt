@@ -2,6 +2,10 @@ package com.iptv.app
 
 import android.app.Application
 import androidx.room.Room
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
 import com.iptv.app.core.database.ChannelDatabase
 import com.iptv.app.core.datastore.AppPreferencesDataStore
 import com.iptv.app.core.network.ChannelRepository
@@ -15,11 +19,10 @@ import java.util.concurrent.TimeUnit
  * Application class — manual DI container (no Hilt/Dagger to keep the project serverless and
  * dependency-light). All singletons are lazily created and exposed as properties.
  *
- * Access pattern from ViewModels:
- *   val app = getApplication<uTVApplication>()
- *   val repository = app.channelRepository
+ * Implements [ImageLoaderFactory] to configure global Coil caching, preventing UI thread lag
+ * and memory spikes when scrolling channel carousels.
  */
-class uTVApplication : Application(), PlayerProvider {
+class uTVApplication : Application(), PlayerProvider, ImageLoaderFactory {
 
     // ── Networking ─────────────────────────────────────────────────────────
 
@@ -58,6 +61,26 @@ class uTVApplication : Application(), PlayerProvider {
 
     override val playerManager: ExoPlayerManager by lazy {
         ExoPlayerManager(applicationContext, okHttpClient)
+    }
+
+    // ── Coil Image Loader Optimization ────────────────────────────────────────
+
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(150L * 1024 * 1024)
+                    .build()
+            }
+            .crossfade(true)
+            .respectCacheHeaders(false)
+            .build()
     }
 
     override fun onTerminate() {

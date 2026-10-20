@@ -62,11 +62,31 @@ class ExoPlayerManager(
     val player: ExoPlayer = buildPlayer()
 
     private fun buildPlayer(): ExoPlayer {
-        // Default data source — headers are overridden per-channel in play()
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
 
-        val player = ExoPlayer.Builder(context)
+        // Live stream buffer tuning: low startup latency and smooth playback
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 10_000,
+                /* maxBufferMs = */ 25_000,
+                /* bufferForPlaybackMs = */ 1_500,
+                /* bufferForPlaybackAfterRebufferMs = */ 2_500,
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+
+        val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(context)
+            .setEnableDecoderFallback(true)
+
+        val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
+            .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+            .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
+            .build()
+
+        val player = ExoPlayer.Builder(context, renderersFactory)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .setLoadControl(loadControl)
+            .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
             .build()
 
         player.addListener(object : Player.Listener {
@@ -150,6 +170,15 @@ class ExoPlayerManager(
                 _errorState.value = StreamErrorState.OffAir
             }
         }
+    }
+
+    fun stop() {
+        watchdogJob?.cancel()
+        player.stop()
+        player.clearMediaItems()
+        _isBuffering.value = false
+        _errorState.value = null
+        _quality.value = StreamQuality.UNKNOWN
     }
 
     fun pause() {

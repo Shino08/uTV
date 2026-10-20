@@ -38,9 +38,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.iptv.app.core.model.Category
 import com.iptv.app.core.model.Channel
 import com.iptv.app.ui.theme.uTVColors
@@ -217,8 +219,16 @@ private fun MiniGuideChannelRow(
             shape = RoundedCornerShape(4.dp),
         ) {
             if (channel.logoUrl != null) {
+                val context = LocalContext.current
+                val imageRequest = remember(channel.logoUrl) {
+                    ImageRequest.Builder(context)
+                        .data(channel.logoUrl)
+                        .size(64, 64)
+                        .crossfade(true)
+                        .build()
+                }
                 AsyncImage(
-                    model = channel.logoUrl,
+                    model = imageRequest,
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.padding(4.dp),

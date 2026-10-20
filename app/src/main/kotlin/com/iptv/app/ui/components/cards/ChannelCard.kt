@@ -40,8 +40,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.iptv.app.core.model.Channel
 import com.iptv.app.ui.theme.LocalIsTV
 import com.iptv.app.ui.theme.uTVColors
@@ -175,13 +177,20 @@ private fun ChannelLogoOrInitials(
     logoUrl: String?,
     modifier: Modifier = Modifier,
 ) {
-    if (logoUrl != null) {
+    if (!logoUrl.isNullOrBlank()) {
+        val context = LocalContext.current
+        val imageRequest = remember(logoUrl) {
+            ImageRequest.Builder(context)
+                .data(logoUrl)
+                .size(240, 135) // Downsample to card bounds to save memory and eliminate lag
+                .crossfade(true)
+                .build()
+        }
         AsyncImage(
-            model = logoUrl,
+            model = imageRequest,
             contentDescription = name,
             contentScale = ContentScale.Fit,
             modifier = modifier,
-            // Fallback to initials on load error is handled below via error slot
         )
     } else {
         InitialsPlaceholder(name = name, modifier = modifier)
