@@ -38,10 +38,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,6 +52,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -456,10 +460,17 @@ private fun MobileMiniGuideContent(
     onFavoriteToggle: (Channel) -> Unit,
 ) {
     var activeCategory by remember { mutableStateOf<Category?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    val filteredChannels = remember(channels, activeCategory) {
-        if (activeCategory == null) channels
-        else channels.filter { it.category == activeCategory }
+    val filteredChannels = remember(channels, activeCategory, searchQuery) {
+        channels.filter { channel ->
+            val matchesCat = activeCategory == null || channel.category == activeCategory
+            val matchesQuery = searchQuery.isBlank() ||
+                channel.name.contains(searchQuery, ignoreCase = true) ||
+                channel.dialNumber.toString().contains(searchQuery) ||
+                channel.countryCode.contains(searchQuery, ignoreCase = true)
+            matchesCat && matchesQuery
+        }
     }
 
     val listState = rememberLazyListState()
@@ -475,7 +486,7 @@ private fun MobileMiniGuideContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(440.dp)
+            .height(480.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Row(
@@ -495,7 +506,53 @@ private fun MobileMiniGuideContent(
             )
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
+
+        // Quick Search Bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = {
+                Text(
+                    text = "Buscar canal o dial (ej. HBO, Anime, 301)...",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = uTVColors.TextSecondary,
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Buscar",
+                    tint = uTVColors.AccentElectricBlue,
+                    modifier = Modifier.size(18.dp),
+                )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Limpiar",
+                            tint = uTVColors.TextSecondary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = uTVColors.SurfaceCard,
+                unfocusedContainerColor = uTVColors.SurfaceCard,
+                focusedBorderColor = uTVColors.AccentAnimeOrange,
+                unfocusedBorderColor = uTVColors.BorderSubtle,
+                focusedTextColor = uTVColors.TextPrimary,
+                unfocusedTextColor = uTVColors.TextPrimary,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+        )
 
         // Horizontal Category Tabs
         LazyRow(

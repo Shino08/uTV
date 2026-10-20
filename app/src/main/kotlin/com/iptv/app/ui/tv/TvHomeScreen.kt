@@ -74,7 +74,7 @@ enum class TvSection(
 ) {
     HOME("Inicio", Icons.Default.Home),
     SEARCH("Buscar", Icons.Default.Search),
-    ANIME("Anime Hub", Icons.Default.SportsEsports),
+    ANIME("Hubs", Icons.Default.SportsEsports),
     FAVORITES("Favoritos", Icons.Default.Star),
 }
 
@@ -238,7 +238,7 @@ fun TvHomeScreen(
                             )
 
                             TvSection.ANIME -> TvAnimeHubContent(
-                                animeChannels = animeChannels,
+                                animeChannels = allChannels,
                                 onChannelSelect = handleChannelSelect,
                                 onFavoriteToggle = { viewModel.toggleFavorite(it) },
                                 onChannelFocus = { focusedChannel = it },
@@ -634,6 +634,13 @@ private fun TvHomeCatalogContent(
 
 // ── Tab 2: TV Search View ────────────────────────────────────────────────────
 
+private data class SearchQuickFilter(
+    val label: String,
+    val category: Category? = null,
+    val countryCode: String? = null,
+    val keyword: String? = null,
+)
+
 @Composable
 private fun TvSearchContent(
     allChannels: List<Channel>,
@@ -642,10 +649,28 @@ private fun TvSearchContent(
     onChannelFocus: (Channel) -> Unit,
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var selectedTag by remember { mutableStateOf<String?>(null) }
+    var selectedFilter by remember { mutableStateOf<SearchQuickFilter?>(null) }
 
-    val searchResults = remember(allChannels, searchQuery, selectedTag) {
-        if (searchQuery.isBlank() && selectedTag == null) {
+    val quickFilters = remember {
+        listOf(
+            SearchQuickFilter("🔥 Anime & Geek", category = Category.ANIMATION),
+            SearchQuickFilter("🎬 HBO & Cine", category = Category.MOVIES),
+            SearchQuickFilter("⚽ Deportes", category = Category.SPORTS),
+            SearchQuickFilter("🧸 Infantil", category = Category.KIDS),
+            SearchQuickFilter("🎵 Música", category = Category.MUSIC),
+            SearchQuickFilter("📰 Noticias", category = Category.NEWS),
+            SearchQuickFilter("🇲🇽 México", countryCode = "MX"),
+            SearchQuickFilter("🇦🇷 Argentina", countryCode = "AR"),
+            SearchQuickFilter("🇨🇱 Chile", countryCode = "CL"),
+            SearchQuickFilter("🇨🇴 Colombia", countryCode = "CO"),
+            SearchQuickFilter("🇻🇪 Venezuela", countryCode = "VE"),
+            SearchQuickFilter("🇵🇪 Perú", countryCode = "PE"),
+            SearchQuickFilter("🇪🇸 España", countryCode = "ES"),
+        )
+    }
+
+    val searchResults = remember(allChannels, searchQuery, selectedFilter) {
+        if (searchQuery.isBlank() && selectedFilter == null) {
             emptyList()
         } else {
             allChannels.filter { channel ->
@@ -653,28 +678,27 @@ private fun TvSearchContent(
                     channel.name.contains(searchQuery, ignoreCase = true) ||
                         channel.dialNumber.toString().contains(searchQuery) ||
                         channel.category.displayName.contains(searchQuery, ignoreCase = true) ||
-                        channel.countryCode.contains(searchQuery, ignoreCase = true)
+                        countryDisplayName(channel.countryCode).contains(searchQuery, ignoreCase = true)
                 } else true
 
-                val matchesTag = if (selectedTag != null) {
-                    channel.category.displayName.equals(selectedTag, ignoreCase = true) ||
-                        channel.countryCode.equals(selectedTag, ignoreCase = true)
-                } else true
+                val filter = selectedFilter
+                val matchesFilter = when {
+                    filter == null -> true
+                    filter.category != null -> channel.category == filter.category
+                    filter.countryCode != null -> channel.countryCode.equals(filter.countryCode, ignoreCase = true)
+                    filter.keyword != null -> channel.name.contains(filter.keyword, ignoreCase = true)
+                    else -> true
+                }
 
-                matchesQuery && matchesTag
+                matchesQuery && matchesFilter
             }.sortedBy { it.dialNumber }
         }
-    }
-
-    val quickTags = remember {
-        listOf("Anime", "Cine", "Deportes", "Noticias", "Música", "Infantil", "CL", "MX", "AR", "VE", "ES", "CO", "PE")
     }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 48.dp),
     ) {
-        // Search Input Bar
         item(key = "tv_search_input") {
             Column(
                 modifier = Modifier
@@ -682,7 +706,7 @@ private fun TvSearchContent(
                     .padding(horizontal = 48.dp, vertical = 12.dp),
             ) {
                 Text(
-                    text = "Buscar Canales de TV",
+                    text = "Buscar Canales en Español",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = uTVColors.TextPrimary,
@@ -694,7 +718,7 @@ private fun TvSearchContent(
                     onValueChange = { searchQuery = it },
                     placeholder = {
                         Text(
-                            text = "Escribe el nombre del canal o número de dial (ej. 301)...",
+                            text = "Busca por canal (ej. EnerGeek, HBO, Telemundo) o dial (ej. 301)...",
                             style = MaterialTheme.typography.bodyLarge,
                             color = uTVColors.TextSecondary,
                         )
@@ -732,24 +756,23 @@ private fun TvSearchContent(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Quick tags
                 Text(
-                    text = "Filtros rápidos:",
+                    text = "Explorar por categoría o país hispano:",
                     style = MaterialTheme.typography.labelSmall,
                     color = uTVColors.TextSecondary,
                 )
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
 
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    items(quickTags) { tag ->
-                        val isSelected = selectedTag == tag
+                    items(quickFilters) { filter ->
+                        val isSelected = selectedFilter == filter
                         TvCategoryFilterChip(
-                            label = tag,
+                            label = filter.label,
                             isSelected = isSelected,
-                            onClick = { selectedTag = if (isSelected) null else tag },
+                            onClick = { selectedFilter = if (isSelected) null else filter },
                         )
                     }
                 }
@@ -757,11 +780,10 @@ private fun TvSearchContent(
             Spacer(Modifier.height(12.dp))
         }
 
-        // Results or Suggestions
         if (searchResults.isNotEmpty()) {
             item(key = "search_results_header") {
                 TvSectionHeader(
-                    title = "Resultados encontrados",
+                    title = selectedFilter?.label ?: "Resultados encontrados",
                     count = searchResults.size,
                     modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
                 )
@@ -790,7 +812,7 @@ private fun TvSearchContent(
                     }
                 }
             }
-        } else if (searchQuery.isNotBlank() || selectedTag != null) {
+        } else if (searchQuery.isNotBlank() || selectedFilter != null) {
             item(key = "search_empty") {
                 Box(
                     modifier = Modifier
@@ -799,17 +821,16 @@ private fun TvSearchContent(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "No se encontraron canales que coincidan con la búsqueda.",
+                        text = "No se encontraron canales para este filtro.",
                         style = MaterialTheme.typography.titleMedium,
                         color = uTVColors.TextSecondary,
                     )
                 }
             }
         } else {
-            // Initial suggestions
             item(key = "search_suggestions_header") {
                 TvSectionHeader(
-                    title = "Canales Populares Sugeridos",
+                    title = "Canales Hispanos Destacados",
                     count = allChannels.take(12).size,
                     modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
                 )
@@ -842,78 +863,179 @@ private fun TvSearchContent(
     }
 }
 
-// ── Tab 4: Anime Hub ──────────────────────────────────────────────────────────
+// ── Tab 3: Hubs (Concentrador de Marcas) ──────────────────────────────────────
+
+private data class BrandHubCollection(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val accentColor: Color,
+    val channels: List<Channel>,
+)
 
 @Composable
 private fun TvAnimeHubContent(
-    animeChannels: List<Channel>,
+    animeChannels: List<Channel>, // Pass `allChannels` here from TvHomeScreen
     onChannelSelect: (Channel) -> Unit,
     onFavoriteToggle: (Channel) -> Unit,
     onChannelFocus: (Channel) -> Unit,
 ) {
-    val featuredAnime = remember(animeChannels) { animeChannels.firstOrNull() }
+    val hubCollections = remember(animeChannels) {
+        val animeList = animeChannels.filter { it.category == Category.ANIMATION }
+        val hboAndPremiumMovies = animeChannels.filter { ch ->
+            ch.category == Category.MOVIES ||
+                ch.name.contains("hbo", ignoreCase = true) ||
+                ch.name.contains("cine", ignoreCase = true) ||
+                ch.name.contains("film", ignoreCase = true) ||
+                ch.name.contains("movie", ignoreCase = true) ||
+                ch.name.contains("golden", ignoreCase = true) ||
+                ch.name.contains("tnt", ignoreCase = true) ||
+                ch.name.contains("space", ignoreCase = true) ||
+                ch.name.contains("star", ignoreCase = true)
+        }
+        val kidsAndRetro = animeChannels.filter { it.category == Category.KIDS }
+        val sportsLive = animeChannels.filter { it.category == Category.SPORTS }
+        val musicHub = animeChannels.filter { it.category == Category.MUSIC }
+        val latamNews = animeChannels.filter { it.category == Category.NEWS }
+
+        listOf(
+            BrandHubCollection(
+                id = "anime",
+                title = "Anime & Cultura Geek",
+                subtitle = "EnerGeek, animación japonesa y series clásicas 24/7",
+                accentColor = uTVColors.AccentAnimeOrange,
+                channels = animeList,
+            ),
+            BrandHubCollection(
+                id = "movies",
+                title = "HBO, Cine & Series Premium",
+                subtitle = "Películas, estrenos, acción y canales de cine continuo",
+                accentColor = Color(0xFF7B2CBF),
+                channels = hboAndPremiumMovies,
+            ),
+            BrandHubCollection(
+                id = "kids",
+                title = "Infantil, Caricaturas & Retro",
+                subtitle = "Animación familiar y clásicos de la infancia",
+                accentColor = Color(0xFF00B4D8),
+                channels = kidsAndRetro,
+            ),
+            BrandHubCollection(
+                id = "sports",
+                title = "Deportes & Motor en Vivo",
+                subtitle = "Fútbol, análisis deportivo y eventos en directo",
+                accentColor = Color(0xFF2EC4B6),
+                channels = sportsLive,
+            ),
+            BrandHubCollection(
+                id = "music",
+                title = "Música, Urbano & Conciertos",
+                subtitle = "Videoclips latinos, pop, rock y sesiones en vivo",
+                accentColor = Color(0xFFE71D36),
+                channels = musicHub,
+            ),
+            BrandHubCollection(
+                id = "news",
+                title = "Noticias & Actualidad Hispana",
+                subtitle = "Cobertura en vivo de Latinoamérica y España",
+                accentColor = uTVColors.AccentElectricBlue,
+                channels = latamNews,
+            ),
+        ).filter { it.channels.isNotEmpty() }
+    }
+
+    var selectedHubId by remember { mutableStateOf<String?>(null) }
+    val activeHub = remember(hubCollections, selectedHubId) {
+        hubCollections.firstOrNull { it.id == selectedHubId }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 48.dp),
     ) {
-        item(key = "anime_hero") {
-            HeroFeaturedBanner(
-                channel = featuredAnime,
-                onPlayClick = { featuredAnime?.let(onChannelSelect) },
-                onFavoriteClick = { featuredAnime?.let(onFavoriteToggle) },
-            )
-        }
-
-        item(key = "anime_section_title") {
-            Row(
+        item(key = "hubs_header") {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 48.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(horizontal = 48.dp, vertical = 14.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 5.dp, height = 24.dp)
-                        .background(uTVColors.AccentAnimeOrange, shape = RoundedCornerShape(2.dp)),
-                )
-                Spacer(Modifier.width(10.dp))
                 Text(
-                    text = "Anime & Geek Hub",
-                    style = MaterialTheme.typography.headlineSmall,
+                    text = "Universos & Hubs de Contenido",
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = uTVColors.TextPrimary,
                 )
-                Spacer(Modifier.width(12.dp))
                 Text(
-                    text = "${animeChannels.size} canales 24/7",
-                    style = MaterialTheme.typography.labelMedium,
+                    text = "Selecciona un Hub (Anime, Cine/HBO, Deportes, Infantil, Música) para concentrar sus canales",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = uTVColors.TextSecondary,
                 )
-            }
-        }
+                Spacer(Modifier.height(14.dp))
 
-        items(animeChannels.chunked(3), key = { it.first().id }) { rowChannels ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 48.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                rowChannels.forEach { channel ->
-                    Box(modifier = Modifier.weight(1f)) {
-                        ChannelCard(
-                            channel = channel,
-                            onClick = { onChannelSelect(channel) },
-                            onFavorite = { onFavoriteToggle(channel) },
-                            onFocus = { onChannelFocus(channel) },
-                            modifier = Modifier.fillMaxWidth(),
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    item {
+                        TvCategoryFilterChip(
+                            label = "Todos los Hubs",
+                            isSelected = selectedHubId == null,
+                            onClick = { selectedHubId = null },
+                        )
+                    }
+                    items(hubCollections, key = { it.id }) { hub ->
+                        TvCategoryFilterChip(
+                            label = "${hub.title} (${hub.channels.size})",
+                            isSelected = selectedHubId == hub.id,
+                            onClick = { selectedHubId = if (selectedHubId == hub.id) null else hub.id },
                         )
                     }
                 }
-                repeat(3 - rowChannels.size) {
-                    Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+
+        if (activeHub != null) {
+            item(key = "active_hub_grid_title") {
+                TvSectionHeader(
+                    title = activeHub.title,
+                    count = activeHub.channels.size,
+                    accentColor = activeHub.accentColor,
+                    modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
+                )
+            }
+            items(activeHub.channels.chunked(3), key = { it.first().id }) { rowChannels ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 48.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    rowChannels.forEach { channel ->
+                        Box(modifier = Modifier.weight(1f)) {
+                            ChannelCard(
+                                channel = channel,
+                                onClick = { onChannelSelect(channel) },
+                                onFavorite = { onFavoriteToggle(channel) },
+                                onFocus = { onChannelFocus(channel) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                    repeat(3 - rowChannels.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
+            }
+        } else {
+            items(hubCollections, key = { it.id }) { hub ->
+                TvChannelCarouselRow(
+                    title = hub.title,
+                    channels = hub.channels,
+                    accentColor = hub.accentColor,
+                    onChannelClick = onChannelSelect,
+                    onFavoriteToggle = onFavoriteToggle,
+                    onChannelFocus = onChannelFocus,
+                )
             }
         }
     }

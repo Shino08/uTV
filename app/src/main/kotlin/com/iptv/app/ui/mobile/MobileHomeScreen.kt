@@ -85,7 +85,7 @@ enum class MobileTab(
 ) {
     HOME("Inicio", Icons.Default.Home),
     GUIDE("Guía TV", Icons.Default.FormatListNumbered),
-    ANIME("Anime Hub", Icons.Default.SportsEsports),
+    ANIME("Hubs", Icons.Default.SportsEsports),
     FAVORITES("Favoritos", Icons.Default.Star),
 }
 
@@ -232,7 +232,7 @@ fun MobileHomeScreen(
                         )
 
                         MobileTab.ANIME -> AnimeHubTabContent(
-                            channels = allChannels.filter { it.category == Category.ANIMATION },
+                            channels = allChannels,
                             onChannelClick = handleChannelClick,
                             onFavoriteToggle = { viewModel.toggleFavorite(it) },
                         )
@@ -857,58 +857,126 @@ private fun GuideChannelRow(
 
 // ── Tab 3: Anime Hub ──────────────────────────────────────────────────────────
 
+private data class MobileBrandHub(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val accentColor: Color,
+    val channels: List<Channel>,
+)
+
 @Composable
 private fun AnimeHubTabContent(
     channels: List<Channel>,
     onChannelClick: (Channel) -> Unit,
     onFavoriteToggle: (Channel) -> Unit,
 ) {
-    val featuredAnime = remember(channels) { channels.firstOrNull() }
+    val hubCollections = remember(channels) {
+        val animeList = channels.filter { it.category == Category.ANIMATION }
+        val hboAndMovies = channels.filter { ch ->
+            ch.category == Category.MOVIES ||
+                ch.name.contains("hbo", ignoreCase = true) ||
+                ch.name.contains("cine", ignoreCase = true) ||
+                ch.name.contains("film", ignoreCase = true) ||
+                ch.name.contains("movie", ignoreCase = true) ||
+                ch.name.contains("golden", ignoreCase = true) ||
+                ch.name.contains("tnt", ignoreCase = true) ||
+                ch.name.contains("space", ignoreCase = true) ||
+                ch.name.contains("star", ignoreCase = true)
+        }
+        val kids = channels.filter { it.category == Category.KIDS }
+        val sports = channels.filter { it.category == Category.SPORTS }
+        val music = channels.filter { it.category == Category.MUSIC }
+        val news = channels.filter { it.category == Category.NEWS }
+
+        listOf(
+            MobileBrandHub("anime", "Anime & Geek", "Animación 24/7 y cultura geek", uTVColors.AccentAnimeOrange, animeList),
+            MobileBrandHub("movies", "HBO & Cine", "Películas, estrenos y series premium", Color(0xFF7B2CBF), hboAndMovies),
+            MobileBrandHub("kids", "Infantil & Retro", "Caricaturas y clásicos familiares", Color(0xFF00B4D8), kids),
+            MobileBrandHub("sports", "Deportes en Vivo", "Fútbol y eventos deportivos", Color(0xFF2EC4B6), sports),
+            MobileBrandHub("music", "Música & Conciertos", "Videoclips y sesiones latinas", Color(0xFFE71D36), music),
+            MobileBrandHub("news", "Noticias Latam", "Actualidad hispana en directo", uTVColors.AccentElectricBlue, news),
+        ).filter { it.channels.isNotEmpty() }
+    }
+
+    var selectedHubId by remember { mutableStateOf<String?>(null) }
+    val activeHub = remember(hubCollections, selectedHubId) {
+        hubCollections.firstOrNull { it.id == selectedHubId }
+    }
+    val displayedChannels = remember(channels, activeHub, hubCollections) {
+        activeHub?.channels ?: channels.filter { it.category == Category.ANIMATION }.ifEmpty { channels }
+    }
+    val featuredChannel = remember(displayedChannels) { displayedChannels.firstOrNull() }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
-        // Anime Hero Banner
-        item(key = "anime_hero") {
+        // Hero Banner for Active Hub
+        item(key = "hubs_hero") {
             HeroFeaturedBanner(
-                channel = featuredAnime,
-                onPlayClick = { featuredAnime?.let(onChannelClick) },
-                onFavoriteClick = { featuredAnime?.let(onFavoriteToggle) },
+                channel = featuredChannel,
+                onPlayClick = { featuredChannel?.let(onChannelClick) },
+                onFavoriteClick = { featuredChannel?.let(onFavoriteToggle) },
             )
         }
 
-        item(key = "anime_header") {
+        item(key = "hubs_header") {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(CircleShape)
-                            .background(uTVColors.AccentAnimeOrange),
+                            .background(activeHub?.accentColor ?: uTVColors.AccentAnimeOrange),
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Anime & Geek Hub",
+                        text = activeHub?.title ?: "Universos & Hubs",
                         style = MaterialTheme.typography.displayLarge.copy(fontSize = 20.sp),
                         color = uTVColors.TextPrimary,
                     )
                 }
                 Text(
-                    text = "Transmisiones continuas 24/7 de animación japonesa y cultura geek",
+                    text = activeHub?.subtitle ?: "Colecciones y canales temáticos continuos",
                     style = MaterialTheme.typography.bodyMedium,
                     color = uTVColors.TextSecondary,
                     modifier = Modifier.padding(top = 4.dp),
                 )
+
+                Spacer(Modifier.height(12.dp))
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    items(hubCollections, key = { it.id }) { hub ->
+                        val isSelected = (selectedHubId == null && hub.id == "anime") || selectedHubId == hub.id
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (isSelected) hub.accentColor else uTVColors.SurfaceCard,
+                            modifier = Modifier.clickable { selectedHubId = hub.id },
+                        ) {
+                            Text(
+                                text = "${hub.title} (${hub.channels.size})",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                ),
+                                color = if (isSelected) Color.White else uTVColors.TextSecondary,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
 
-        // Grid of Anime Channels
-        items(channels.chunked(2), key = { it.first().id }) { rowChannels ->
+        // Grid of Channels
+        items(displayedChannels.chunked(2), key = { it.first().id }) { rowChannels ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -85,6 +85,7 @@ fun TvPlayerScreen(
     var dialedDigits by remember { mutableStateOf("") }
     var dialFeedbackMessage by remember { mutableStateOf<String?>(null) }
     var favoriteFeedbackMessage by remember { mutableStateOf<String?>(null) }
+    var miniGuideSearchTrigger by remember { mutableStateOf(0) }
 
     // Auto-dismiss favorite feedback toast
     LaunchedEffect(favoriteFeedbackMessage) {
@@ -200,8 +201,10 @@ fun TvPlayerScreen(
                     KeyEvent.KEYCODE_DPAD_LEFT -> {
                         if (!uiState.isMiniGuideVisible) {
                             viewModel.toggleMiniGuide()
-                            true
-                        } else false
+                        } else {
+                            miniGuideSearchTrigger++
+                        }
+                        true
                     }
 
                     KeyEvent.KEYCODE_DPAD_RIGHT -> {
@@ -386,6 +389,7 @@ fun TvPlayerScreen(
                 viewModel.closeMiniGuide()
                 focusRequester.requestFocus()
             },
+            searchJumpTrigger = miniGuideSearchTrigger,
             modifier = Modifier.align(Alignment.CenterStart),
         )
     }

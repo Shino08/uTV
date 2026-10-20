@@ -26,8 +26,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,12 +64,10 @@ import com.iptv.app.ui.theme.uTVColors
 import kotlinx.coroutines.delay
 
 /**
- * Android TV Quick Channel Guide Overlay (Left Panel — 35% screen width):
+ * Android TV & Mobile Quick Channel Guide Overlay (Left Panel — 36% screen width):
+ * - Top magnifying glass icon (Search): pressing D-Pad LEFT again while inside the guide
+ *   jumps directly to the search bar for instant channel lookup during streaming.
  * - D-Pad remote accessible: navigates UP/DOWN smoothly while current channel continues streaming.
- * - Auto-focuses on the currently playing channel row upon opening.
- * - Selecting any channel with OK (DPAD_CENTER / ENTER) tunes that channel immediately.
- * - Pressing D-Pad RIGHT or BACK closes the panel and returns focus to the player.
- * - Fast category filtering tabs above the list.
  */
 @Composable
 fun MiniGuideOverlay(
@@ -70,22 +76,53 @@ fun MiniGuideOverlay(
     currentChannelId: String?,
     onChannelSelected: (Channel) -> Unit,
     onClose: () -> Unit = {},
+    searchJumpTrigger: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     var activeCategory by remember { mutableStateOf<Category?>(null) }
+    var isSearchExpanded by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    val filteredChannels = remember(channels, activeCategory) {
-        if (activeCategory == null) channels
-        else channels.filter { it.category == activeCategory }
-    }
-
-    val listState = rememberLazyListState()
+    val searchInputFocusRequester = remember { FocusRequester() }
+    val searchButtonFocusRequester = remember { FocusRequester() }
     val activeItemFocusRequester = remember { FocusRequester() }
     val firstItemFocusRequester = remember { FocusRequester() }
 
+    val filteredChannels = remember(channels, activeCategory, searchQuery) {
+        channels.filter { channel ->
+            val matchesCat = activeCategory == null || channel.category == activeCategory
+            val matchesQuery = searchQuery.isBlank() ||
+                channel.name.contains(searchQuery, ignoreCase = true) ||
+                channel.dialNumber.toString().contains(searchQuery) ||
+                channel.countryCode.contains(searchQuery, ignoreCase = true)
+            matchesCat && matchesQuery
+        }
+    }
+
+    val listState = rememberLazyListState()
+
+    // Reset search when overlay closes
+    LaunchedEffect(isVisible) {
+        if (!isVisible) {
+            isSearchExpanded = false
+            searchQuery = ""
+        }
+    }
+
+    // When user presses D-Pad LEFT again while guide is already open, jump to the Search Magnifying Glass
+    LaunchedEffect(searchJumpTrigger) {
+        if (isVisible && searchJumpTrigger > 0) {
+            isSearchExpanded = true
+            delay(80)
+            try {
+                searchInputFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     // Auto-scroll and focus the currently playing channel when the guide opens
     LaunchedEffect(isVisible, activeCategory) {
-        if (isVisible && filteredChannels.isNotEmpty()) {
+        if (isVisible && !isSearchExpanded && filteredChannels.isNotEmpty()) {
             val targetIndex = filteredChannels.indexOfFirst { it.id == currentChannelId }
             if (targetIndex >= 0) {
                 listState.scrollToItem(maxOf(0, targetIndex - 2))
@@ -103,6 +140,10 @@ fun MiniGuideOverlay(
         }
     }
 
+    val activateSearch = {
+        isSearchExpanded = true
+    }
+
     AnimatedVisibility(
         visible = isVisible,
         enter = slideInHorizontally(initialOffsetX = { -it }) + fadeIn(),
@@ -112,7 +153,7 @@ fun MiniGuideOverlay(
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(0.36f)
+                .fillMaxWidth(0.38f)
                 .background(color = uTVColors.SurfaceGlassOSD)
                 .border(
                     width = 1.dp,
@@ -122,15 +163,15 @@ fun MiniGuideOverlay(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
 
-                // ── Header ────────────────────────────────────────────────────
+                // ── Header + Magnifying Glass Button ──────────────────────────
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Guía Rápida",
                             style = MaterialTheme.typography.titleLarge,
@@ -138,22 +179,121 @@ fun MiniGuideOverlay(
                             color = uTVColors.TextPrimary,
                         )
                         Text(
-                            text = "${filteredChannels.size} canales • Pulsa OK para cambiar",
-                            style = MaterialTheme.typography.labelSmall,
+                            text = "Pulsa ◀ otra vez para buscar • ▶ salir",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                             color = uTVColors.TextSecondary,
                         )
                     }
-                    Text(
-                        text = "▶ / BACK para salir",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                        color = uTVColors.TextSecondary,
+
+                    // Magnifying Glass Button (Top Right of Guide)
+                    var isSearchBtnFocused by remember { mutableStateOf(false) }
+                    Surface(
+                        color = when {
+                            isSearchBtnFocused -> uTVColors.AccentAnimeOrange
+                            isSearchExpanded -> uTVColors.AccentElectricBlue
+                            else -> uTVColors.SurfaceCard
+                        },
+                        shape = CircleShape,
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (isSearchBtnFocused) 2.dp else 1.dp,
+                            color = if (isSearchBtnFocused) Color.White else uTVColors.AccentElectricBlue,
+                        ),
+                        modifier = Modifier
+                            .size(40.dp)
+                            .scale(if (isSearchBtnFocused) 1.1f else 1f)
+                            .focusRequester(searchButtonFocusRequester)
+                            .onFocusChanged { isSearchBtnFocused = it.isFocused }
+                            .focusable()
+                            .clickable {
+                                isSearchExpanded = !isSearchExpanded
+                                if (!isSearchExpanded) searchQuery = ""
+                            },
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isSearchExpanded) Icons.Default.Close else Icons.Default.Search,
+                                contentDescription = "Buscar canal",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+
+                // ── Expandable Quick Search Input ─────────────────────────────
+                AnimatedVisibility(visible = isSearchExpanded) {
+                    LaunchedEffect(Unit) {
+                        delay(60)
+                        try {
+                            searchInputFocusRequester.requestFocus()
+                        } catch (_: Exception) {}
+                    }
+
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = {
+                            Text(
+                                text = "Canal o dial (ej. HBO, Anime, 301)...",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = uTVColors.TextSecondary,
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                tint = uTVColors.AccentElectricBlue,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Limpiar",
+                                        tint = uTVColors.TextSecondary,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = uTVColors.SurfaceCard,
+                            unfocusedContainerColor = uTVColors.SurfaceCard,
+                            focusedBorderColor = uTVColors.AccentAnimeOrange,
+                            unfocusedBorderColor = uTVColors.AccentElectricBlue,
+                            focusedTextColor = uTVColors.TextPrimary,
+                            unfocusedTextColor = uTVColors.TextPrimary,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .focusRequester(searchInputFocusRequester)
+                            .onKeyEvent { keyEvent ->
+                                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN &&
+                                    keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_DOWN &&
+                                    filteredChannels.isNotEmpty()
+                                ) {
+                                    try {
+                                        firstItemFocusRequester.requestFocus()
+                                    } catch (_: Exception) {}
+                                    true
+                                } else false
+                            },
                     )
                 }
 
                 // ── Category filter tabs ──────────────────────────────────────
+                val visibleCategories = remember {
+                    Category.entries.filter { it != Category.UNDEFINED }
+                }
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
                     item {
                         MiniGuideCategoryTab(
@@ -161,20 +301,22 @@ fun MiniGuideOverlay(
                             isSelected = activeCategory == null,
                             onClick = { activeCategory = null },
                             onClose = onClose,
+                            onJumpToSearch = activateSearch,
                         )
                     }
-                    items(Category.entries.filter { it != Category.UNDEFINED }.size) { index ->
-                        val category = Category.entries.filter { it != Category.UNDEFINED }[index]
+                    items(visibleCategories.size) { index ->
+                        val category = visibleCategories[index]
                         MiniGuideCategoryTab(
                             label = category.displayName,
                             isSelected = activeCategory == category,
-                            onClick = { activeCategory = category },
+                            onClick = { activeCategory = if (activeCategory == category) null else category },
                             onClose = onClose,
+                            onJumpToSearch = activateSearch,
                         )
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(4.dp))
 
                 // ── Channel list ──────────────────────────────────────────────
                 LazyColumn(
@@ -190,8 +332,8 @@ fun MiniGuideOverlay(
                     ) { index, channel ->
                         val isActive = channel.id == currentChannelId
                         val itemFocusRequester = when {
-                            isActive -> activeItemFocusRequester
                             index == 0 -> firstItemFocusRequester
+                            isActive -> activeItemFocusRequester
                             else -> null
                         }
 
@@ -201,6 +343,9 @@ fun MiniGuideOverlay(
                             focusRequester = itemFocusRequester,
                             onClick = { onChannelSelected(channel) },
                             onClose = onClose,
+                            onJumpToSearch = {
+                                isSearchExpanded = true
+                            },
                         )
                     }
                 }
@@ -217,6 +362,7 @@ private fun MiniGuideCategoryTab(
     isSelected: Boolean,
     onClick: () -> Unit,
     onClose: () -> Unit,
+    onJumpToSearch: () -> Unit,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -238,9 +384,11 @@ private fun MiniGuideCategoryTab(
             .clickable(onClick = onClick)
             .onKeyEvent { keyEvent ->
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
-                    if (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                        onClose()
-                        return@onKeyEvent true
+                    when (keyEvent.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_DPAD_UP -> {
+                            onJumpToSearch()
+                            return@onKeyEvent true
+                        }
                     }
                 }
                 false
@@ -262,6 +410,7 @@ private fun MiniGuideChannelRow(
     focusRequester: FocusRequester?,
     onClick: () -> Unit,
     onClose: () -> Unit,
+    onJumpToSearch: () -> Unit,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -275,6 +424,10 @@ private fun MiniGuideChannelRow(
         .onKeyEvent { keyEvent ->
             if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                 when (keyEvent.nativeKeyEvent.keyCode) {
+                    KeyEvent.KEYCODE_DPAD_LEFT -> {
+                        onJumpToSearch()
+                        true
+                    }
                     KeyEvent.KEYCODE_DPAD_RIGHT -> {
                         onClose()
                         true
@@ -311,7 +464,6 @@ private fun MiniGuideChannelRow(
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp, vertical = 8.dp),
         ) {
-            // Dial number badge
             Surface(
                 color = if (isFocused || isActive) uTVColors.AccentElectricBlue else uTVColors.SurfaceCard,
                 shape = RoundedCornerShape(4.dp),
@@ -329,7 +481,6 @@ private fun MiniGuideChannelRow(
 
             Spacer(Modifier.width(10.dp))
 
-            // Channel Logo
             Surface(
                 modifier = Modifier.size(32.dp),
                 color = uTVColors.BackgroundSecondary,
@@ -355,7 +506,6 @@ private fun MiniGuideChannelRow(
 
             Spacer(Modifier.width(10.dp))
 
-            // Channel Name & Live state
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = channel.name,
@@ -378,7 +528,6 @@ private fun MiniGuideChannelRow(
                 }
             }
 
-            // Favorite star badge
             if (channel.isFavorite) {
                 Text(
                     text = "★",
