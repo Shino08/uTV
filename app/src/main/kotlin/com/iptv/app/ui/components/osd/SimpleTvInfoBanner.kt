@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -94,6 +97,7 @@ fun SimpleTvInfoBanner(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .background(
                     color = uTVColors.SurfaceGlassOSD,
                     shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp),
@@ -103,7 +107,7 @@ fun SimpleTvInfoBanner(
                     color = uTVColors.BorderSubtle,
                     shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp),
                 )
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -118,7 +122,7 @@ fun SimpleTvInfoBanner(
                     channel = channel,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = 10.dp),
                 )
 
                 // ── Block Right: Time + Quality + Favorite ───────────────────
@@ -139,18 +143,18 @@ fun SimpleTvInfoBanner(
 private fun OsdLeftBlock(channel: Channel) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Giant dial number
+        // Dial number
         Text(
             text = channel.dialNumber.toString(),
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             color = uTVColors.TextPrimary,
         )
 
         // Channel logo in rounded square container
         Surface(
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(46.dp),
             color = uTVColors.SurfaceCard,
             shape = RoundedCornerShape(8.dp),
         ) {
@@ -159,7 +163,7 @@ private fun OsdLeftBlock(channel: Channel) {
                 val imageRequest = remember(channel.logoUrl) {
                     ImageRequest.Builder(context)
                         .data(channel.logoUrl)
-                        .size(112, 112)
+                        .size(92, 92)
                         .crossfade(true)
                         .build()
                 }
@@ -167,13 +171,13 @@ private fun OsdLeftBlock(channel: Channel) {
                     model = imageRequest,
                     contentDescription = channel.name,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(6.dp),
                 )
             } else {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(56.dp)) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(46.dp)) {
                     Text(
                         text = channel.name.take(2).uppercase(),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                         color = uTVColors.TextSecondary,
                     )
                 }
@@ -188,15 +192,17 @@ private fun OsdCenterBlock(channel: Channel, modifier: Modifier = Modifier) {
         // Channel name
         Text(
             text = channel.name,
-            style = MaterialTheme.typography.displayLarge,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             color = uTVColors.TextPrimary,
         )
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(3.dp))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             // Category pill
             Surface(
@@ -207,7 +213,9 @@ private fun OsdCenterBlock(channel: Channel, modifier: Modifier = Modifier) {
                     text = channel.category.displayName,
                     style = MaterialTheme.typography.labelSmall,
                     color = uTVColors.AccentElectricBlue,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                 )
             }
 
@@ -233,7 +241,7 @@ private fun OsdRightBlock(
 ) {
     Column(
         horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // Current time
         val time = remember(isVisible) {
@@ -241,35 +249,42 @@ private fun OsdRightBlock(
         }
         Text(
             text = time,
-            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 20.sp),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             color = uTVColors.TextPrimary,
         )
 
-        // Quality badge
-        if (quality != StreamQuality.UNKNOWN) {
-            Surface(
-                color = uTVColors.AccentElectricBlue,
-                shape = RoundedCornerShape(4.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            // Quality badge
+            if (quality != StreamQuality.UNKNOWN) {
+                Surface(
+                    color = uTVColors.AccentElectricBlue,
+                    shape = RoundedCornerShape(4.dp),
+                ) {
+                    Text(
+                        text = quality.label,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        color = uTVColors.TextPrimary,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    )
+                }
+            }
+
+            // Favorite icon
+            IconButton(
+                onClick = onFavoriteClick,
+                modifier = Modifier.size(28.dp),
             ) {
-                Text(
-                    text = quality.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = uTVColors.TextPrimary,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                Icon(
+                    imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                    contentDescription = "Favorito",
+                    tint = if (isFavorite) uTVColors.FavoriteGold else uTVColors.TextSecondary,
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
-
-        // Favorite icon
-        Icon(
-            imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-            contentDescription = "Favorite",
-            tint = if (isFavorite) uTVColors.FavoriteGold else uTVColors.TextSecondary,
-            modifier = Modifier
-                .size(24.dp)
-                .clip(RoundedCornerShape(50.dp))
-                .clickable { onFavoriteClick() },
-        )
     }
 }
 

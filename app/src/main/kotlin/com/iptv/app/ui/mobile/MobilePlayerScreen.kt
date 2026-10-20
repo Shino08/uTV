@@ -7,12 +7,15 @@ import android.content.ContextWrapper
 import android.os.Build
 import android.util.Rational
 import android.view.ViewGroup
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -38,14 +41,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.ui.platform.LocalConfiguration
+import kotlinx.coroutines.delay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -103,6 +110,15 @@ import com.iptv.app.ui.theme.uTVColors
  * - Mobile MiniGuide BottomSheet: browse all dials (100–799) with category tabs without stopping video.
  * - SignalErrorOverlay: handles 403 (GeoBlocked), 404/Timeout (OffAir), and generic player errors without crashing player.
  */
+/**
+ * Supported video scaling modes on mobile devices (portrait & landscape).
+ */
+enum class MobileResizeMode(val mode: Int, val label: String) {
+    FIT(AspectRatioFrameLayout.RESIZE_MODE_FIT, "Ajustar (16:9)"),
+    ZOOM(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, "Llenar pantalla"),
+    FILL(AspectRatioFrameLayout.RESIZE_MODE_FILL, "Estirar"),
+}
+
 @OptIn(ExperimentalMaterial3Api::class, UnstableApi::class)
 @Composable
 fun MobilePlayerScreen(
@@ -118,6 +134,45 @@ fun MobilePlayerScreen(
     val allChannels by viewModel.allChannels.collectAsState()
 
     var isInPipMode by remember { mutableStateOf(false) }
+    var resizeMode by remember { mutableStateOf(MobileResizeMode.FIT) }
+    var resizeFeedbackMessage by remember { mutableStateOf<String?>(null) }
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val toggleResizeMode: () -> Unit = {
+        resizeMode = when (resizeMode) {
+            MobileResizeMode.FIT -> MobileResizeMode.ZOOM
+            MobileResizeMode.ZOOM -> MobileResizeMode.FILL
+            MobileResizeMode.FILL -> MobileResizeMode.FIT
+        }
+        resizeFeedbackMessage = resizeMode.label
+    }
+
+    LaunchedEffect(resizeFeedbackMessage) {
+        if (resizeFeedbackMessage != null) {
+            delay(1500)
+            resizeFeedbackMessage = null
+        }
+    }
+
+    val toggleOrientation: () -> Unit = {
+        val activity = findActivity(context)
+        if (activity != null) {
+            activity.requestedOrientation = if (isLandscape) {
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            val activity = findActivity(context)
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
 
     // Load initial channel when navigated to
     LaunchedEffect(channelId) {
@@ -188,6 +243,11 @@ fun MobilePlayerScreen(
                                 viewModel.toggleOsd()
                             }
                         },
+                        onDoubleTap = {
+                            if (!isInPipMode) {
+                                toggleResizeMode()
+                            }
+                        },
                     )
                 }
                 .pointerInput(Unit) {
@@ -219,7 +279,7 @@ fun MobilePlayerScreen(
                     PlayerView(ctx).apply {
                         player = viewModel.player
                         useController = false
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        resizeMode = resizeMode.mode
                         keepScreenOn = true
                         layoutParams = ViewGroup.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -229,6 +289,7 @@ fun MobilePlayerScreen(
                 },
                 update = { playerView ->
                     playerView.player = viewModel.player
+                    playerView.resizeMode = resizeMode.mode
                 },
                 modifier = Modifier.fillMaxSize(),
             )
@@ -254,7 +315,39 @@ fun MobilePlayerScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        // ── 4. Interactive Overlays (Hidden in Picture-in-Picture) ───────────
+        // ── 4. Ephemeral Resize Mode Feedback Badge ──────────────────────────
+        AnimatedVisibility(
+            visible = resizeFeedbackMessage != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center),
+        ) {
+            Surface(
+                color = uTVColors.SurfaceGlassOSD,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, uTVColors.BorderSubtle),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AspectRatio,
+                        contentDescription = null,
+                        tint = uTVColors.AccentElectricBlue,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = resizeFeedbackMessage ?: "",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = uTVColors.TextPrimary,
+                    )
+                }
+            }
+        }
+
+        // ── 5. Interactive Overlays (Hidden in Picture-in-Picture) ───────────
         if (!isInPipMode) {
             // Top Bar Overlay
             AnimatedVisibility(
@@ -270,6 +363,8 @@ fun MobilePlayerScreen(
                     onPipClick = { enterPipMode(context) },
                     onZapPrevious = { viewModel.zapPrevious() },
                     onZapNext = { viewModel.zapNext() },
+                    onToggleResizeMode = toggleResizeMode,
+                    onToggleOrientation = toggleOrientation,
                 )
             }
 
@@ -330,6 +425,8 @@ private fun PlayerTopBar(
     onPipClick: () -> Unit,
     onZapPrevious: () -> Unit,
     onZapNext: () -> Unit,
+    onToggleResizeMode: () -> Unit,
+    onToggleOrientation: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -391,11 +488,35 @@ private fun PlayerTopBar(
                 }
             }
 
-            // Right: Quick Zap buttons, MiniGuide & PiP buttons
+            // Right: Resize, Rotate, Quick Zap, MiniGuide & PiP buttons
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                // Resize Mode toggle (Fit 16:9 / Zoom / Fill)
+                IconButton(
+                    onClick = onToggleResizeMode,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AspectRatio,
+                        contentDescription = "Modo de escalado",
+                        tint = uTVColors.TextPrimary,
+                    )
+                }
+
+                // Screen Orientation toggle (Landscape / Portrait)
+                IconButton(
+                    onClick = onToggleOrientation,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ScreenRotation,
+                        contentDescription = "Rotar pantalla",
+                        tint = uTVColors.TextPrimary,
+                    )
+                }
+
                 // Zap Down (Previous dial)
                 IconButton(
                     onClick = onZapPrevious,

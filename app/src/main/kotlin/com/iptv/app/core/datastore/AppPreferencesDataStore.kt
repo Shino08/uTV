@@ -23,7 +23,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class AppPreferencesDataStore(private val context: Context) {
 
     private object Keys {
-        val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp_ms")
+        val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp_v2_ms")
         val LAST_WATCHED_CHANNEL_ID = stringPreferencesKey("last_watched_channel_id")
     }
 

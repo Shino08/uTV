@@ -663,12 +663,12 @@ private fun TvSearchContent(
 ) {
     val quickFilters = remember {
         listOf(
-            SearchQuickFilter("🔥 Anime & Geek", category = Category.ANIMATION),
-            SearchQuickFilter("🎬 HBO & Cine", category = Category.MOVIES),
-            SearchQuickFilter("⚽ Deportes", category = Category.SPORTS),
-            SearchQuickFilter("🧸 Infantil", category = Category.KIDS),
-            SearchQuickFilter("🎵 Música", category = Category.MUSIC),
-            SearchQuickFilter("📰 Noticias", category = Category.NEWS),
+            SearchQuickFilter("Anime & Geek", category = Category.ANIMATION),
+            SearchQuickFilter("Cine & Series", category = Category.MOVIES),
+            SearchQuickFilter("Deportes", category = Category.SPORTS),
+            SearchQuickFilter("Infantil", category = Category.KIDS),
+            SearchQuickFilter("Música", category = Category.MUSIC),
+            SearchQuickFilter("Noticias", category = Category.NEWS),
             SearchQuickFilter("🇲🇽 México", countryCode = "MX"),
             SearchQuickFilter("🇦🇷 Argentina", countryCode = "AR"),
             SearchQuickFilter("🇨🇱 Chile", countryCode = "CL"),

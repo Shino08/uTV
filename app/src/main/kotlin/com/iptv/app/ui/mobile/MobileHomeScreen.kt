@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,12 +26,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SportsEsports
@@ -54,10 +58,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -933,92 +940,176 @@ private fun AnimeHubTabContent(
     }
     val featuredChannel = remember(displayedChannels) { displayedChannels.firstOrNull() }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
-        // Hero Banner for Active Hub
-        item(key = "hubs_hero") {
-            HeroFeaturedBanner(
-                channel = featuredChannel,
-                onPlayClick = { featuredChannel?.let(onChannelClick) },
-                onFavoriteClick = { featuredChannel?.let(onFavoriteToggle) },
-            )
-        }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val showScrollToTop by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 2 }
+    }
 
-        item(key = "hubs_header") {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(activeHub?.accentColor ?: uTVColors.AccentAnimeOrange),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = activeHub?.title ?: "Universos & Hubs",
-                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 20.sp),
-                        color = uTVColors.TextPrimary,
-                    )
-                }
-                Text(
-                    text = activeHub?.subtitle ?: "Colecciones y canales temáticos continuos",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = uTVColors.TextSecondary,
-                    modifier = Modifier.padding(top = 4.dp),
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 32.dp),
+        ) {
+            // Hero Banner for Active Hub
+            item(key = "hubs_hero") {
+                HeroFeaturedBanner(
+                    channel = featuredChannel,
+                    onPlayClick = { featuredChannel?.let(onChannelClick) },
+                    onFavoriteClick = { featuredChannel?.let(onFavoriteToggle) },
                 )
+            }
 
-                Spacer(Modifier.height(12.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
+            item(key = "hubs_header") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                 ) {
-                    items(hubCollections, key = { it.id }) { hub ->
-                        val isSelected = (selectedHubId == null && hub.id == "anime") || selectedHubId == hub.id
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = if (isSelected) hub.accentColor else uTVColors.SurfaceCard,
-                            modifier = Modifier.clickable { onHubSelected(hub.id) },
-                        ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(activeHub?.accentColor ?: uTVColors.AccentAnimeOrange),
+                            )
+                            Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "${hub.title} (${hub.channels.size})",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                ),
-                                color = if (isSelected) Color.White else uTVColors.TextSecondary,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                text = activeHub?.title ?: "Universos & Hubs",
+                                style = MaterialTheme.typography.displayLarge.copy(fontSize = 20.sp),
+                                color = uTVColors.TextPrimary,
                             )
                         }
+
+                        // Header quick scroll to top
+                        if (showScrollToTop) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = uTVColors.SurfaceCard,
+                                modifier = Modifier.clickable {
+                                    coroutineScope.launch { listState.scrollToItem(0) }
+                                },
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowUp,
+                                        contentDescription = "Ir al inicio",
+                                        tint = uTVColors.AccentElectricBlue,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Text(
+                                        text = "Inicio",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = uTVColors.TextPrimary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Text(
+                        text = activeHub?.subtitle ?: "Colecciones y canales temáticos continuos",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = uTVColors.TextSecondary,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        items(hubCollections, key = { it.id }) { hub ->
+                            val isSelected = (selectedHubId == null && hub.id == "anime") || selectedHubId == hub.id
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isSelected) hub.accentColor else uTVColors.SurfaceCard,
+                                modifier = Modifier.clickable { onHubSelected(hub.id) },
+                            ) {
+                                Text(
+                                    text = "${hub.title} (${hub.channels.size})",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                    ),
+                                    color = if (isSelected) Color.White else uTVColors.TextSecondary,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Grid of Channels
+            items(displayedChannels.chunked(2), key = { it.first().id }) { rowChannels ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    rowChannels.forEach { ch ->
+                        Box(modifier = Modifier.weight(1f)) {
+                            ChannelCard(
+                                channel = ch,
+                                onClick = { onChannelClick(ch) },
+                                onFavorite = { onFavoriteToggle(ch) },
+                            )
+                        }
+                    }
+                    if (rowChannels.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
         }
 
-        // Grid of Channels
-        items(displayedChannels.chunked(2), key = { it.first().id }) { rowChannels ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                rowChannels.forEach { ch ->
-                    Box(modifier = Modifier.weight(1f)) {
-                        ChannelCard(
-                            channel = ch,
-                            onClick = { onChannelClick(ch) },
-                            onFavorite = { onFavoriteToggle(ch) },
-                        )
+        // Floating Action Button to Scroll directly to Top
+        AnimatedVisibility(
+            visible = showScrollToTop,
+            enter = fadeIn() + slideInVertically { it },
+            exit = fadeOut() + slideOutVertically { it },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 16.dp),
+        ) {
+            Surface(
+                onClick = {
+                    coroutineScope.launch {
+                        listState.scrollToItem(0)
                     }
-                }
-                if (rowChannels.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
+                },
+                shape = RoundedCornerShape(28.dp),
+                color = uTVColors.AccentElectricBlue,
+                shadowElevation = 8.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, uTVColors.BorderSubtle),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Ir al inicio",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = "Inicio",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                    )
                 }
             }
         }
@@ -1308,7 +1399,9 @@ fun countryDisplayName(code: String): String = when (code.uppercase()) {
     "PE" -> "🇵🇪 Perú"
     "PY" -> "🇵🇾 Paraguay"
     "SV" -> "🇸🇻 El Salvador"
+    "US" -> "🇺🇸 EE. UU."
     "UY" -> "🇺🇾 Uruguay"
     "VE" -> "🇻🇪 Venezuela"
-    else -> "🌐 $code"
+    "LATAM" -> "Latinoamérica"
+    else -> code.uppercase()
 }
