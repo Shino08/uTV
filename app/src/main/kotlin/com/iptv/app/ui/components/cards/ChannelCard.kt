@@ -46,6 +46,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.iptv.app.core.model.Channel
 import com.iptv.app.ui.theme.LocalIsTV
+import com.iptv.app.ui.theme.LocalReduceAnimations
 import com.iptv.app.ui.theme.uTVColors
 
 /**
@@ -68,11 +69,12 @@ fun ChannelCard(
     onFocus: (() -> Unit)? = null,
 ) {
     val isTV = LocalIsTV.current
+    val reduceAnimations = LocalReduceAnimations.current
     var isFocused by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
-        targetValue = if (isTV && isFocused) 1.08f else 1f,
-        animationSpec = tween(durationMillis = 150),
+        targetValue = if (isTV && isFocused && !reduceAnimations) 1.08f else 1f,
+        animationSpec = tween(durationMillis = if (reduceAnimations) 0 else 150),
         label = "card_scale",
     )
 
@@ -179,11 +181,12 @@ private fun ChannelLogoOrInitials(
 ) {
     if (!logoUrl.isNullOrBlank()) {
         val context = LocalContext.current
-        val imageRequest = remember(logoUrl) {
+        val reduceAnimations = LocalReduceAnimations.current
+        val imageRequest = remember(logoUrl, reduceAnimations) {
             ImageRequest.Builder(context)
                 .data(logoUrl)
                 .size(240, 135) // Downsample to card bounds to save memory and eliminate lag
-                .crossfade(true)
+                .crossfade(!reduceAnimations)
                 .build()
         }
         AsyncImage(

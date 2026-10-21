@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
 
             uTVTheme(
                 isTV = isTV,
+                themePreference = userSettings.themePreference,
                 reduceAnimations = userSettings.reduceAnimations,
                 fontSizeScale = userSettings.fontSizePreference.scale,
             ) {

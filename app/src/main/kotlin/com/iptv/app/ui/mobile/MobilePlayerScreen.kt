@@ -379,18 +379,25 @@ fun MobilePlayerScreen(
             }
 
             // Bottom OSD Banner (SimpleTvInfoBanner)
-            uiState.currentChannel?.let { currentChannel ->
+            val bannerChannel = uiState.pendingConfirmChannel ?: uiState.currentChannel
+            bannerChannel?.let { channel ->
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth(),
                 ) {
                     SimpleTvInfoBanner(
-                        channel = currentChannel,
+                        channel = channel,
                         quality = uiState.quality,
                         isVisible = uiState.isOsdVisible,
                         onDismiss = { viewModel.dismissOsd() },
-                        onFavoriteClick = { viewModel.toggleFavorite() },
+                        onFavoriteClick = {
+                            if (uiState.pendingConfirmChannel != null) {
+                                viewModel.confirmPendingZap()
+                            } else {
+                                viewModel.toggleFavorite()
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

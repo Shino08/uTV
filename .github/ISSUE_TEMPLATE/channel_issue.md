@@ -2,7 +2,7 @@
 name: Canal caído
 about: Reporta un canal que no reproduce
 title: "[Canal] "
-labels: channel
+labels: canal
 ---
 
 **Nombre del canal**

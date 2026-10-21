@@ -8,6 +8,7 @@ import com.iptv.app.core.model.Channel
 import com.iptv.app.core.model.StreamErrorState
 import com.iptv.app.core.model.StreamQuality
 import com.iptv.app.core.model.UserSettings
+import com.iptv.app.core.model.ZappingSpeedPreference
 import com.iptv.app.core.player.ExoPlayerManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 /** UI state for the Player screen. */
 data class PlayerUiState(
     val currentChannel: Channel? = null,
+    val pendingConfirmChannel: Channel? = null,
     val quality: StreamQuality = StreamQuality.UNKNOWN,
     val errorState: StreamErrorState? = null,
     val isBuffering: Boolean = false,
@@ -93,9 +95,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun playChannel(channel: Channel) {
+        zapDebounceJob?.cancel()
         _uiState.update {
             it.copy(
                 currentChannel = channel,
+                pendingConfirmChannel = null,
                 errorState = null,
                 isOsdVisible = true,
                 isMiniGuideVisible = false,
@@ -111,48 +115,65 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun zapNext() {
         val channels = allChannels.value
         if (channels.isEmpty()) return
-        val current = _uiState.value.currentChannel
-        val currentIndex = channels.indexOfFirst { it.id == current?.id }
+        val referenceChannel = _uiState.value.pendingConfirmChannel ?: _uiState.value.currentChannel
+        val currentIndex = channels.indexOfFirst { it.id == referenceChannel?.id }
         val nextIndex = if (currentIndex in 0 until channels.lastIndex) currentIndex + 1 else 0
-        val targetChannel = channels[nextIndex]
-
-        val debounceMs = userSettings.value.zappingSpeed.debounceMs
-        if (debounceMs <= 0L) {
-            playChannel(targetChannel)
-        } else {
-            // Update OSD preview immediately so the UI responds smoothly
-            _uiState.update { it.copy(currentChannel = targetChannel, isOsdVisible = true) }
-            zapDebounceJob?.cancel()
-            zapDebounceJob = viewModelScope.launch {
-                delay(debounceMs)
-                playerManager.play(targetChannel)
-                repository.recordWatch(targetChannel.tvgId)
-            }
-        }
+        handleZapTarget(channels[nextIndex])
     }
 
     /** Zaps to the previous channel in the sorted channel list (dial - 1 / previous index). */
     fun zapPrevious() {
         val channels = allChannels.value
         if (channels.isEmpty()) return
-        val current = _uiState.value.currentChannel
-        val currentIndex = channels.indexOfFirst { it.id == current?.id }
+        val referenceChannel = _uiState.value.pendingConfirmChannel ?: _uiState.value.currentChannel
+        val currentIndex = channels.indexOfFirst { it.id == referenceChannel?.id }
         val prevIndex = if (currentIndex > 0) currentIndex - 1 else channels.lastIndex
-        val targetChannel = channels[prevIndex]
+        handleZapTarget(channels[prevIndex])
+    }
 
-        val debounceMs = userSettings.value.zappingSpeed.debounceMs
-        if (debounceMs <= 0L) {
-            playChannel(targetChannel)
-        } else {
-            // Update OSD preview immediately so the UI responds smoothly
-            _uiState.update { it.copy(currentChannel = targetChannel, isOsdVisible = true) }
-            zapDebounceJob?.cancel()
-            zapDebounceJob = viewModelScope.launch {
-                delay(debounceMs)
-                playerManager.play(targetChannel)
-                repository.recordWatch(targetChannel.tvgId)
+    private fun handleZapTarget(targetChannel: Channel) {
+        val speed = userSettings.value.zappingSpeed
+        when (speed) {
+            ZappingSpeedPreference.FAST -> {
+                _uiState.update { it.copy(pendingConfirmChannel = null) }
+                playChannel(targetChannel)
+            }
+            ZappingSpeedPreference.NORMAL -> {
+                _uiState.update {
+                    it.copy(
+                        currentChannel = targetChannel,
+                        pendingConfirmChannel = null,
+                        isOsdVisible = true,
+                    )
+                }
+                zapDebounceJob?.cancel()
+                zapDebounceJob = viewModelScope.launch {
+                    delay(speed.debounceMs)
+                    playerManager.play(targetChannel)
+                    repository.recordWatch(targetChannel.tvgId)
+                }
+            }
+            ZappingSpeedPreference.CONFIRM -> {
+                _uiState.update {
+                    it.copy(
+                        pendingConfirmChannel = targetChannel,
+                        isOsdVisible = true,
+                    )
+                }
             }
         }
+    }
+
+    /** Invocado al presionar OK cuando hay un canal pendiente de confirmación. */
+    fun confirmPendingZap(): Boolean {
+        val pending = _uiState.value.pendingConfirmChannel ?: return false
+        _uiState.update { it.copy(pendingConfirmChannel = null) }
+        playChannel(pending)
+        return true
+    }
+
+    fun clearPendingZap() {
+        _uiState.update { it.copy(pendingConfirmChannel = null) }
     }
 
     fun toggleOsd() {
@@ -164,7 +185,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun dismissOsd() {
-        _uiState.update { it.copy(isOsdVisible = false) }
+        _uiState.update { it.copy(isOsdVisible = false, pendingConfirmChannel = null) }
     }
 
     fun toggleMiniGuide() {

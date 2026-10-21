@@ -227,6 +227,9 @@ fun TvPlayerScreen(
 
                     KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                         if (!uiState.isMiniGuideVisible) {
+                            if (viewModel.confirmPendingZap()) {
+                                return@onKeyEvent true
+                            }
                             val current = uiState.currentChannel
                             if (current != null) {
                                 val willBeFavorite = !current.isFavorite
@@ -369,14 +372,15 @@ fun TvPlayerScreen(
         }
 
         // ── 5. SimpleTvInfoBanner (Bottom 3-block OSD) ────────────────────────
-        uiState.currentChannel?.let { currentChannel ->
+        val bannerChannel = uiState.pendingConfirmChannel ?: uiState.currentChannel
+        bannerChannel?.let { channel ->
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth(),
             ) {
                 SimpleTvInfoBanner(
-                    channel = currentChannel,
+                    channel = channel,
                     quality = uiState.quality,
                     isVisible = uiState.isOsdVisible,
                     onDismiss = { viewModel.dismissOsd() },

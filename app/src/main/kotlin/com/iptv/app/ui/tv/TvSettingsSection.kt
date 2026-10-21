@@ -98,6 +98,8 @@ fun TvSettingsSection(
     var showAspectRatioDialog by remember { mutableStateOf(false) }
     var showTimeoutDialog by remember { mutableStateOf(false) }
     var showZappingDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
+    var showFontSizeDialog by remember { mutableStateOf(false) }
     var showClearHistoryConfirm by remember { mutableStateOf(false) }
     var showClearFavoritesConfirm by remember { mutableStateOf(false) }
     var showLegalDialog by remember { mutableStateOf(false) }
@@ -190,10 +192,21 @@ fun TvSettingsSection(
                         value = "${settings.connectionTimeoutSeconds} segundos",
                         onClick = { showTimeoutDialog = true },
                     )
+                }
+            }
+
+            // ── Grupo 3: Apariencia y Controles ──────────────────────────────
+            item(key = "tv_group_appearance") {
+                TvSettingsGroupCard(title = "Apariencia y Controles", icon = Icons.Default.Palette) {
                     TvSettingsItem(
-                        title = "Velocidad de zapping",
-                        value = settings.zappingSpeed.label,
-                        onClick = { showZappingDialog = true },
+                        title = "Tema de la aplicación",
+                        value = settings.themePreference.label,
+                        onClick = { showThemeDialog = true },
+                    )
+                    TvSettingsItem(
+                        title = "Tamaño de texto",
+                        value = settings.fontSizePreference.label,
+                        onClick = { showFontSizeDialog = true },
                     )
                     TvSettingsToggleItem(
                         title = "Reducir animaciones",
@@ -201,10 +214,15 @@ fun TvSettingsSection(
                         checked = settings.reduceAnimations,
                         onToggle = { viewModel.setReduceAnimations(!settings.reduceAnimations) },
                     )
+                    TvSettingsItem(
+                        title = "Velocidad de zapping",
+                        value = settings.zappingSpeed.label,
+                        onClick = { showZappingDialog = true },
+                    )
                 }
             }
 
-            // ── Grupo 3: Privacidad y Mantenimiento ──────────────────────────
+            // ── Grupo 4: Privacidad y Mantenimiento ──────────────────────────
             item(key = "tv_group_privacy") {
                 TvSettingsGroupCard(title = "Privacidad y Catálogo", icon = Icons.Default.Security) {
                     TvSettingsToggleItem(
@@ -237,7 +255,7 @@ fun TvSettingsSection(
                 }
             }
 
-            // ── Grupo 4: Legal, Versión y Acerca de ──────────────────────────
+            // ── Grupo 5: Legal, Versión y Acerca de ──────────────────────────
             item(key = "tv_group_legal") {
                 TvSettingsGroupCard(title = "Acerca de uTV y Legal", icon = Icons.Default.Info) {
                     TvSettingsItem(
@@ -412,6 +430,32 @@ fun TvSettingsSection(
                 showZappingDialog = false
             },
             onDismiss = { showZappingDialog = false },
+        )
+    }
+
+    if (showThemeDialog) {
+        TvSelectDialog(
+            title = "Tema de la aplicación",
+            options = ThemePreference.entries.map { it to it.label },
+            selectedOption = settings.themePreference,
+            onSelect = {
+                viewModel.setThemePreference(it)
+                showThemeDialog = false
+            },
+            onDismiss = { showThemeDialog = false },
+        )
+    }
+
+    if (showFontSizeDialog) {
+        TvSelectDialog(
+            title = "Tamaño de texto",
+            options = FontSizePreference.entries.map { it to it.label },
+            selectedOption = settings.fontSizePreference,
+            onSelect = {
+                viewModel.setFontSizePreference(it)
+                showFontSizeDialog = false
+            },
+            onDismiss = { showFontSizeDialog = false },
         )
     }
 

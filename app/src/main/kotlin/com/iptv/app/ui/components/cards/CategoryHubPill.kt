@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.iptv.app.ui.theme.LocalIsTV
+import com.iptv.app.ui.theme.LocalReduceAnimations
 import com.iptv.app.ui.theme.uTVColors
 
 /**
@@ -60,6 +61,7 @@ fun CategoryHubPill(
     modifier: Modifier = Modifier,
 ) {
     val isTV = LocalIsTV.current
+    val reduceAnimations = LocalReduceAnimations.current
     var isFocused by remember { mutableStateOf(false) }
 
     val borderWidth by animateDpAsState(
@@ -68,7 +70,7 @@ fun CategoryHubPill(
             isTV && isFocused -> 2.dp
             else -> 0.dp
         },
-        animationSpec = tween(150),
+        animationSpec = tween(if (reduceAnimations) 0 else 150),
         label = "pill_border",
     )
 
