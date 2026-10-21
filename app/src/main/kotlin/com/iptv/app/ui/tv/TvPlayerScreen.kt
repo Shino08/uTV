@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.iptv.app.core.model.AspectRatioPreference
 import com.iptv.app.core.model.Channel
 import com.iptv.app.ui.components.osd.MiniGuideOverlay
 import com.iptv.app.ui.components.osd.SignalErrorOverlay
@@ -78,6 +79,15 @@ fun TvPlayerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val allChannels by viewModel.allChannels.collectAsState()
+    val userSettings by viewModel.userSettings.collectAsState()
+
+    val tvResizeMode = remember(userSettings.aspectRatio) {
+        when (userSettings.aspectRatio) {
+            AspectRatioPreference.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+            AspectRatioPreference.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+            AspectRatioPreference.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+        }
+    }
 
     val focusRequester = remember { FocusRequester() }
 
@@ -253,7 +263,7 @@ fun TvPlayerScreen(
                 PlayerView(ctx).apply {
                     player = viewModel.player
                     useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    resizeMode = tvResizeMode
                     keepScreenOn = true
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -263,6 +273,7 @@ fun TvPlayerScreen(
             },
             update = { playerView ->
                 playerView.player = viewModel.player
+                playerView.resizeMode = tvResizeMode
             },
             modifier = Modifier.fillMaxSize(),
         )

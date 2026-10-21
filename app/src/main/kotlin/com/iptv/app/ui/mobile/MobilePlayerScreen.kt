@@ -93,6 +93,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import com.iptv.app.core.model.AspectRatioPreference
 import com.iptv.app.core.model.Category
 import com.iptv.app.core.model.Channel
 import com.iptv.app.ui.components.osd.SignalErrorOverlay
@@ -133,8 +134,17 @@ fun MobilePlayerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val allChannels by viewModel.allChannels.collectAsState()
 
+    val userSettings by viewModel.userSettings.collectAsState()
+    val initialResizeMode = remember(userSettings.aspectRatio) {
+        when (userSettings.aspectRatio) {
+            AspectRatioPreference.FIT -> MobileResizeMode.FIT
+            AspectRatioPreference.FILL -> MobileResizeMode.FILL
+            AspectRatioPreference.ZOOM -> MobileResizeMode.ZOOM
+        }
+    }
+
     var isInPipMode by remember { mutableStateOf(false) }
-    var resizeMode by remember { mutableStateOf(MobileResizeMode.FIT) }
+    var resizeMode by remember(initialResizeMode) { mutableStateOf(initialResizeMode) }
     var resizeFeedbackMessage by remember { mutableStateOf<String?>(null) }
 
     val configuration = LocalConfiguration.current
