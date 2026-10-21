@@ -6,9 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 
-// ── Composition local for TV/Mobile context ──────────────────────────────────
+// ── Composition locals for TV/Mobile context & Accessibility ─────────────────
 
 val LocalIsTV = staticCompositionLocalOf { false }
+val LocalReduceAnimations = staticCompositionLocalOf { false }
+val LocalFontSizeScale = staticCompositionLocalOf { 1.0f }
 
 // ── Dark color scheme wired to the design system palette ─────────────────────
 
@@ -29,15 +31,20 @@ private val uTVDarkColorScheme = darkColorScheme(
 
 /**
  * Wraps the app in MaterialTheme with the uTV design system.
- * The [isTV] flag adjusts typography scaling and is accessible
- * anywhere in the tree via [LocalIsTV].
+ * Configured with form factor and user accessibility preferences.
  */
 @Composable
 fun uTVTheme(
     isTV: Boolean = false,
+    reduceAnimations: Boolean = false,
+    fontSizeScale: Float = 1.0f,
     content: @Composable () -> Unit,
 ) {
-    CompositionLocalProvider(LocalIsTV provides isTV) {
+    CompositionLocalProvider(
+        LocalIsTV provides isTV,
+        LocalReduceAnimations provides reduceAnimations,
+        LocalFontSizeScale provides fontSizeScale,
+    ) {
         MaterialTheme(
             colorScheme = uTVDarkColorScheme,
             typography = uTVTypography,

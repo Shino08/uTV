@@ -105,6 +105,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { repository.recordWatch(channel.tvgId) }
     }
 
+    private var zapDebounceJob: kotlinx.coroutines.Job? = null
+
     /** Zaps to the next channel in the sorted channel list (dial + 1 / next index). */
     fun zapNext() {
         val channels = allChannels.value
@@ -112,7 +114,21 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val current = _uiState.value.currentChannel
         val currentIndex = channels.indexOfFirst { it.id == current?.id }
         val nextIndex = if (currentIndex in 0 until channels.lastIndex) currentIndex + 1 else 0
-        playChannel(channels[nextIndex])
+        val targetChannel = channels[nextIndex]
+
+        val debounceMs = userSettings.value.zappingSpeed.debounceMs
+        if (debounceMs <= 0L) {
+            playChannel(targetChannel)
+        } else {
+            // Update OSD preview immediately so the UI responds smoothly
+            _uiState.update { it.copy(currentChannel = targetChannel, isOsdVisible = true) }
+            zapDebounceJob?.cancel()
+            zapDebounceJob = viewModelScope.launch {
+                delay(debounceMs)
+                playerManager.play(targetChannel)
+                repository.recordWatch(targetChannel.tvgId)
+            }
+        }
     }
 
     /** Zaps to the previous channel in the sorted channel list (dial - 1 / previous index). */
@@ -122,7 +138,21 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val current = _uiState.value.currentChannel
         val currentIndex = channels.indexOfFirst { it.id == current?.id }
         val prevIndex = if (currentIndex > 0) currentIndex - 1 else channels.lastIndex
-        playChannel(channels[prevIndex])
+        val targetChannel = channels[prevIndex]
+
+        val debounceMs = userSettings.value.zappingSpeed.debounceMs
+        if (debounceMs <= 0L) {
+            playChannel(targetChannel)
+        } else {
+            // Update OSD preview immediately so the UI responds smoothly
+            _uiState.update { it.copy(currentChannel = targetChannel, isOsdVisible = true) }
+            zapDebounceJob?.cancel()
+            zapDebounceJob = viewModelScope.launch {
+                delay(debounceMs)
+                playerManager.play(targetChannel)
+                repository.recordWatch(targetChannel.tvgId)
+            }
+        }
     }
 
     fun toggleOsd() {

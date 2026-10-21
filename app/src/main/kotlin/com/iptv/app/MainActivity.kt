@@ -5,8 +5,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
+import com.iptv.app.core.model.UserSettings
 import com.iptv.app.ui.navigation.AppNavGraph
 import com.iptv.app.ui.theme.uTVTheme
 
@@ -28,9 +31,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val isTV = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        val app = application as uTVApplication
 
         setContent {
-            uTVTheme(isTV = isTV) {
+            val userSettings by app.appPreferences.userSettings.collectAsState(initial = UserSettings())
+
+            uTVTheme(
+                isTV = isTV,
+                reduceAnimations = userSettings.reduceAnimations,
+                fontSizeScale = userSettings.fontSizePreference.scale,
+            ) {
                 val navController = rememberNavController()
                 AppNavGraph(
                     navController = navController,

@@ -51,6 +51,7 @@ class uTVApplication : Application(), PlayerProvider, ImageLoaderFactory {
             dao = database.channelDao(),
             dataStore = appPreferences,
             downloader = M3UDownloader(okHttpClient),
+            context = applicationContext,
         )
     }
 

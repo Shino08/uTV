@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.NetworkWifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -114,6 +115,29 @@ fun SignalErrorOverlay(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = "El canal no está transmitiendo en este momento.\nUsa el control para cambiar de canal.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = uTVColors.TextSecondary,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+
+                    is StreamErrorState.WifiOnlyRestricted -> {
+                        Icon(
+                            imageVector = Icons.Default.NetworkWifi,
+                            contentDescription = null,
+                            tint = uTVColors.AccentAnimeOrange,
+                            modifier = Modifier.size(56.dp),
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = "Modo Solo Wi-Fi activo",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = uTVColors.TextPrimary,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Conéctate a una red Wi-Fi o desactiva la opción en Ajustes para reproducir con datos móviles.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = uTVColors.TextSecondary,
                             textAlign = TextAlign.Center,

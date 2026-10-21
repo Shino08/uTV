@@ -1,5 +1,6 @@
 package com.iptv.app.core.network
 
+import android.content.Context
 import com.iptv.app.core.database.ChannelDao
 import com.iptv.app.core.database.entity.ChannelEntity
 import com.iptv.app.core.database.entity.UserChannelPrefEntity
@@ -26,6 +27,7 @@ class ChannelRepository(
     private val dao: ChannelDao,
     private val dataStore: AppPreferencesDataStore,
     private val downloader: M3UDownloader,
+    private val context: Context? = null,
 ) {
     val userSettings: Flow<UserSettings> = dataStore.userSettings
 
@@ -39,6 +41,13 @@ class ChannelRepository(
      *         [Result.failure] on network error when cache is empty.
      */
     suspend fun syncIfNeeded(): Result<Unit> = withContext(Dispatchers.IO) {
+        val settings = dataStore.userSettings.first()
+        if (settings.syncOnlyWifi && context != null && !NetworkUtils.isWifiOrEthernetConnected(context)) {
+            if (dao.countChannels() > 0) {
+                return@withContext Result.success(Unit) // Postpone sync on cellular if cache is available
+            }
+        }
+
         val lastSync = dataStore.lastSyncTimestamp.first()
 
         if (dataStore.isCacheFresh(lastSync) && dao.countChannels() > 0) {

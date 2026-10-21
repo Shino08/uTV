@@ -19,6 +19,7 @@ import com.iptv.app.core.model.DecoderMode
 import com.iptv.app.core.model.StreamErrorState
 import com.iptv.app.core.model.StreamQuality
 import com.iptv.app.core.model.UserSettings
+import com.iptv.app.core.network.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -159,6 +160,17 @@ class ExoPlayerManager(
         } else {
             player.volume = (settings.defaultVolume.coerceIn(0, 100)) / 100f
         }
+
+        // Live Wi-Fi restriction update
+        if (settings.onlyWifi && !NetworkUtils.isWifiOrEthernetConnected(context) && player.isPlaying) {
+            player.pause()
+            _errorState.value = StreamErrorState.WifiOnlyRestricted
+        } else if (_errorState.value is StreamErrorState.WifiOnlyRestricted &&
+            (!settings.onlyWifi || NetworkUtils.isWifiOrEthernetConnected(context))
+        ) {
+            _errorState.value = null
+            player.play()
+        }
     }
 
     /**
@@ -168,6 +180,13 @@ class ExoPlayerManager(
     fun play(channel: Channel) {
         _errorState.value = null
         _quality.value = StreamQuality.UNKNOWN
+
+        // Wi-Fi only restriction check
+        if (currentSettings.onlyWifi && !NetworkUtils.isWifiOrEthernetConnected(context)) {
+            _errorState.value = StreamErrorState.WifiOnlyRestricted
+            player.stop()
+            return
+        }
 
         // Apply volume before playback starts
         if (currentSettings.startMuted) {

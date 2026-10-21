@@ -29,8 +29,11 @@ sealed interface StreamErrorState {
     /** HTTP 403 received — stream is likely geo-restricted. */
     data object GeoBlocked : StreamErrorState
 
-    /** HTTP 404, stream unreachable, or 8-second connection timeout. */
+    /** HTTP 404, stream unreachable, or connection timeout. */
     data object OffAir : StreamErrorState
+
+    /** Active when user requested 'Only Wi-Fi' in settings and device is on mobile data. */
+    data object WifiOnlyRestricted : StreamErrorState
 
     /** Unrecoverable generic player error with an optional message. */
     data class PlayerError(val message: String?) : StreamErrorState
