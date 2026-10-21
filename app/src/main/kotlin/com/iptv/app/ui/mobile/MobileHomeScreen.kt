@@ -352,6 +352,7 @@ private fun HomeTabContent(
     val musicChannels = remember(allChannels) { allChannels.filter { it.category == Category.MUSIC } }
     val newsChannels = remember(allChannels) { allChannels.filter { it.category == Category.NEWS } }
     val kidsChannels = remember(allChannels) { allChannels.filter { it.category == Category.KIDS } }
+    val gridColumns = calculateMobileGridColumns()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -433,8 +434,7 @@ private fun HomeTabContent(
                 )
             }
 
-            val columns = calculateMobileGridColumns()
-            items(filteredChannels.chunked(columns), key = { it.first().id }) { rowChannels ->
+            items(filteredChannels.chunked(gridColumns), key = { it.first().id }) { rowChannels ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -450,7 +450,7 @@ private fun HomeTabContent(
                             )
                         }
                     }
-                    val missing = columns - rowChannels.size
+                    val missing = gridColumns - rowChannels.size
                     if (missing > 0) {
                         repeat(missing) {
                             Spacer(modifier = Modifier.weight(1f))
@@ -967,6 +967,7 @@ private fun AnimeHubTabContent(
     val showScrollToTop by remember {
         derivedStateOf { listState.firstVisibleItemIndex > 2 }
     }
+    val gridColumns = calculateMobileGridColumns()
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -1073,8 +1074,7 @@ private fun AnimeHubTabContent(
             }
 
             // Grid of Channels
-            val columns = calculateMobileGridColumns()
-            items(displayedChannels.chunked(columns), key = { it.first().id }) { rowChannels ->
+            items(displayedChannels.chunked(gridColumns), key = { it.first().id }) { rowChannels ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1090,7 +1090,7 @@ private fun AnimeHubTabContent(
                             )
                         }
                     }
-                    val missing = columns - rowChannels.size
+                    val missing = gridColumns - rowChannels.size
                     if (missing > 0) {
                         repeat(missing) {
                             Spacer(modifier = Modifier.weight(1f))
@@ -1195,6 +1195,7 @@ private fun FavoritesTabContent(
             }
         }
     } else {
+        val gridColumns = calculateMobileGridColumns()
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -1208,8 +1209,7 @@ private fun FavoritesTabContent(
                 )
             }
 
-            val columns = calculateMobileGridColumns()
-            items(favorites.chunked(columns), key = { it.first().id }) { rowChannels ->
+            items(favorites.chunked(gridColumns), key = { it.first().id }) { rowChannels ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1223,7 +1223,7 @@ private fun FavoritesTabContent(
                             )
                         }
                     }
-                    val missing = columns - rowChannels.size
+                    val missing = gridColumns - rowChannels.size
                     if (missing > 0) {
                         repeat(missing) {
                             Spacer(modifier = Modifier.weight(1f))
