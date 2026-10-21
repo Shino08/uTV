@@ -114,7 +114,7 @@ fun SignalErrorOverlay(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "El canal no está transmitiendo en este momento.\nUsa el control para cambiar de canal.",
+                            text = "El canal no está transmitiendo en este momento.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = uTVColors.TextSecondary,
                             textAlign = TextAlign.Center,
