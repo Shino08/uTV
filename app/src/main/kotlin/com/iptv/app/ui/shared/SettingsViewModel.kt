@@ -12,6 +12,7 @@ import com.iptv.app.core.model.StreamQualityPreference
 import com.iptv.app.core.model.ThemePreference
 import com.iptv.app.core.model.UserSettings
 import com.iptv.app.core.model.ZappingSpeedPreference
+import com.iptv.app.core.network.AppUpdateState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     private val dataStore = (app as uTVApplication).appPreferences
     private val repository = (app as uTVApplication).channelRepository
+    private val updateChecker = (app as uTVApplication).appUpdateChecker
 
     val settings: StateFlow<UserSettings> = dataStore.userSettings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserSettings())
@@ -37,8 +39,36 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
+    private val _updateState = MutableStateFlow<AppUpdateState>(AppUpdateState.Idle)
+    val updateState: StateFlow<AppUpdateState> = _updateState.asStateFlow()
+
     fun dismissFeedback() {
         _feedbackMessage.value = null
+    }
+
+    fun checkForUpdates() {
+        if (_updateState.value is AppUpdateState.Checking) return
+        viewModelScope.launch {
+            _updateState.value = AppUpdateState.Checking
+            val result = updateChecker.check()
+            _updateState.value = result
+            when (result) {
+                is AppUpdateState.UpToDate -> {
+                    _feedbackMessage.value = "uTV está actualizado (v${result.currentVersion})"
+                }
+                is AppUpdateState.UpdateAvailable -> {
+                    _feedbackMessage.value = "Nueva versión v${result.latestVersion} disponible"
+                }
+                is AppUpdateState.Error -> {
+                    _feedbackMessage.value = result.message
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    fun dismissUpdateState() {
+        _updateState.value = AppUpdateState.Idle
     }
 
     // ── Video & Playback ─────────────────────────────────────────────────────

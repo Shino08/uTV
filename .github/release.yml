@@ -1,0 +1,14 @@
+changelog:
+  categories:
+    - title: Nuevas funciones
+      labels:
+        - feature
+    - title: Correcciones
+      labels:
+        - bug
+    - title: Interfaz
+      labels:
+        - ui
+    - title: Otros cambios
+      labels:
+        - "*"

@@ -55,6 +55,10 @@ class uTVApplication : Application(), PlayerProvider, ImageLoaderFactory {
         )
     }
 
+    val appUpdateChecker: com.iptv.app.core.network.AppUpdateChecker by lazy {
+        com.iptv.app.core.network.AppUpdateChecker(okHttpClient)
+    }
+
     // ── Player (PlayerProvider interface) ─────────────────────────────────────
 
     override val playerManager: ExoPlayerManager by lazy {

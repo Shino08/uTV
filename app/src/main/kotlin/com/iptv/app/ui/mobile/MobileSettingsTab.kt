@@ -1,5 +1,7 @@
 package com.iptv.app.ui.mobile
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -23,8 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NetworkWifi
@@ -34,6 +39,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
@@ -60,6 +66,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.iptv.app.BuildConfig
+import com.iptv.app.core.network.AppUpdateChecker
+import com.iptv.app.core.network.AppUpdateState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +95,8 @@ fun MobileSettingsTab(
     val settings by viewModel.settings.collectAsState()
     val feedbackMessage by viewModel.feedbackMessage.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
+    val updateState by viewModel.updateState.collectAsState()
+    val context = LocalContext.current
 
     var showQualityDialog by remember { mutableStateOf(false) }
     var showBufferDialog by remember { mutableStateOf(false) }
@@ -98,6 +110,7 @@ fun MobileSettingsTab(
     var showClearHistoryConfirm by remember { mutableStateOf(false) }
     var showClearFavoritesConfirm by remember { mutableStateOf(false) }
     var showLegalDialog by remember { mutableStateOf(false) }
+    var showCreditsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(feedbackMessage) {
         if (feedbackMessage != null) {
@@ -275,7 +288,7 @@ fun MobileSettingsTab(
                 }
             }
 
-            // ── Grupo 5: Información y Aviso Legal ────────────────────────────
+            // ── Grupo 5: Información, Actualizaciones y Aviso Legal ─────────────
             item(key = "group_legal") {
                 SettingsSectionCard(title = "Acerca de uTV", icon = Icons.Default.Info) {
                     Row(
@@ -287,7 +300,7 @@ fun MobileSettingsTab(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "uTV v2.1 (Open Source)",
+                                text = "uTV v${BuildConfig.VERSION_NAME} (Compilación ${BuildConfig.VERSION_CODE})",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = uTVColors.TextPrimary,
                             )
@@ -299,7 +312,67 @@ fun MobileSettingsTab(
                             )
                         }
                     }
+
                     HorizontalDivider(color = uTVColors.BorderSubtle)
+
+                    // Verificar actualizaciones en GitHub Releases
+                    val updateSubtitle = when (val state = updateState) {
+                        is AppUpdateState.Checking -> "Consultando GitHub Releases..."
+                        is AppUpdateState.UpToDate -> "uTV está al día (v${state.currentVersion})"
+                        is AppUpdateState.UpdateAvailable -> "¡Nueva versión v${state.latestVersion} disponible! Toca para descargar el APK."
+                        is AppUpdateState.Error -> "Error: ${state.message} (Toca para reintentar)"
+                        is AppUpdateState.Idle -> "Buscar nueva versión en GitHub Releases"
+                    }
+                    SettingsNavigationRow(
+                        title = "Verificar actualizaciones",
+                        subtitle = updateSubtitle,
+                        icon = Icons.Default.SystemUpdate,
+                        onClick = {
+                            when (val state = updateState) {
+                                is AppUpdateState.UpdateAvailable -> {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(state.downloadUrl))
+                                    context.startActivity(intent)
+                                }
+                                else -> viewModel.checkForUpdates()
+                            }
+                        },
+                    )
+
+                    HorizontalDivider(color = uTVColors.BorderSubtle)
+
+                    SettingsNavigationRow(
+                        title = "Créditos y Librerías",
+                        subtitle = "iptv-org, Media3 / ExoPlayer, OkHttp, Coil, Room",
+                        icon = Icons.Default.Group,
+                        onClick = { showCreditsDialog = true },
+                    )
+
+                    HorizontalDivider(color = uTVColors.BorderSubtle)
+
+                    SettingsNavigationRow(
+                        title = "Código fuente en GitHub",
+                        subtitle = "github.com/${AppUpdateChecker.GITHUB_OWNER}/${AppUpdateChecker.GITHUB_REPO}",
+                        icon = Icons.Default.Code,
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(AppUpdateChecker.GITHUB_REPO_URL))
+                            context.startActivity(intent)
+                        },
+                    )
+
+                    HorizontalDivider(color = uTVColors.BorderSubtle)
+
+                    SettingsNavigationRow(
+                        title = "Reportar problema o sugerencia",
+                        subtitle = "Abre un issue para reportar canales caídos o errores",
+                        icon = Icons.Default.BugReport,
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(AppUpdateChecker.GITHUB_ISSUES_URL))
+                            context.startActivity(intent)
+                        },
+                    )
+
+                    HorizontalDivider(color = uTVColors.BorderSubtle)
+
                     SettingsNavigationRow(
                         title = "Aviso Legal y Deslinde de Responsabilidad",
                         subtitle = "uTV no aloja ni distribuye contenido multimedia.",
@@ -581,6 +654,87 @@ fun MobileSettingsTab(
                     Text("Entendido", color = uTVColors.AccentElectricBlue, fontWeight = FontWeight.Bold)
                 }
             },
+        )
+    }
+
+    if (showCreditsDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreditsDialog = false },
+            containerColor = uTVColors.SurfaceGlassOSD,
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Group,
+                        contentDescription = null,
+                        tint = uTVColors.AccentElectricBlue,
+                    )
+                    Text(
+                        text = "Créditos y Librerías",
+                        color = uTVColors.TextPrimary,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    )
+                }
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(top = 4.dp),
+                ) {
+                    Text(
+                        text = "uTV es un reproductor libre construido gracias a estos proyectos de código abierto:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = uTVColors.TextPrimary,
+                    )
+                    CreditItem(
+                        name = "iptv-org / iptv",
+                        desc = "Listas de canales públicas mundiales (Unlicense - Dominio Público)",
+                    )
+                    CreditItem(
+                        name = "Media3 / ExoPlayer",
+                        desc = "Motor de reproducción HLS y DASH para Android (Apache 2.0)",
+                    )
+                    CreditItem(
+                        name = "OkHttp",
+                        desc = "Cliente HTTP para descarga de listas y streams (Apache 2.0)",
+                    )
+                    CreditItem(
+                        name = "Coil",
+                        desc = "Carga y cache optimizado de logos de canales (Apache 2.0)",
+                    )
+                    CreditItem(
+                        name = "Room & DataStore",
+                        desc = "Almacenamiento local del catálogo, favoritos y preferencias (Apache 2.0)",
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCreditsDialog = false }) {
+                    Text("Cerrar", color = uTVColors.AccentElectricBlue, fontWeight = FontWeight.Bold)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun CreditItem(
+    name: String,
+    desc: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            color = uTVColors.AccentAnimeOrange,
+        )
+        Text(
+            text = desc,
+            style = MaterialTheme.typography.bodySmall,
+            color = uTVColors.TextSecondary,
         )
     }
 }

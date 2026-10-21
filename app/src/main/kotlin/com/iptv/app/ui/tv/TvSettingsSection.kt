@@ -1,5 +1,7 @@
 package com.iptv.app.ui.tv
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -67,6 +69,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.iptv.app.core.model.AspectRatioPreference
 import com.iptv.app.core.model.BufferDurationMode
+import androidx.compose.ui.platform.LocalContext
+import com.iptv.app.BuildConfig
+import com.iptv.app.core.network.AppUpdateChecker
+import com.iptv.app.core.network.AppUpdateState
 import com.iptv.app.core.model.DecoderMode
 import com.iptv.app.core.model.FontSizePreference
 import com.iptv.app.core.model.StreamQualityPreference
@@ -84,6 +90,8 @@ fun TvSettingsSection(
     val settings by viewModel.settings.collectAsState()
     val feedbackMessage by viewModel.feedbackMessage.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
+    val updateState by viewModel.updateState.collectAsState()
+    val context = LocalContext.current
 
     var showQualityDialog by remember { mutableStateOf(false) }
     var showBufferDialog by remember { mutableStateOf(false) }
@@ -94,6 +102,8 @@ fun TvSettingsSection(
     var showClearHistoryConfirm by remember { mutableStateOf(false) }
     var showClearFavoritesConfirm by remember { mutableStateOf(false) }
     var showLegalDialog by remember { mutableStateOf(false) }
+    var showCreditsDialog by remember { mutableStateOf(false) }
+    var showGitHubDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(feedbackMessage) {
         if (feedbackMessage != null) {
@@ -228,9 +238,59 @@ fun TvSettingsSection(
                 }
             }
 
-            // ── Grupo 4: Legal y Acerca de ────────────────────────────────────
+            // ── Grupo 4: Legal, Versión y Acerca de ──────────────────────────
             item(key = "tv_group_legal") {
-                TvSettingsGroupCard(title = "Información Legal", icon = Icons.Default.Info) {
+                TvSettingsGroupCard(title = "Acerca de uTV y Legal", icon = Icons.Default.Info) {
+                    TvSettingsItem(
+                        title = "Versión de uTV",
+                        value = "v${BuildConfig.VERSION_NAME} (Compilación ${BuildConfig.VERSION_CODE})",
+                        onClick = {},
+                    )
+
+                    val updateLabel = when (val state = updateState) {
+                        is AppUpdateState.Checking -> "Comprobando en GitHub..."
+                        is AppUpdateState.UpToDate -> "Al día (v${state.currentVersion})"
+                        is AppUpdateState.UpdateAvailable -> "¡Nueva v${state.latestVersion}! (Abrir descarga)"
+                        is AppUpdateState.Error -> "Error al consultar (Reintentar)"
+                        is AppUpdateState.Idle -> "Buscar en GitHub Releases"
+                    }
+                    TvSettingsItem(
+                        title = "Verificar actualizaciones",
+                        value = updateLabel,
+                        onClick = {
+                            when (val state = updateState) {
+                                is AppUpdateState.UpdateAvailable -> {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(state.downloadUrl))
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {
+                                        showGitHubDialog = true
+                                    }
+                                }
+                                else -> viewModel.checkForUpdates()
+                            }
+                        },
+                    )
+
+                    TvSettingsItem(
+                        title = "Créditos y Librerías Open Source",
+                        value = "iptv-org, Media3, OkHttp, Coil, Room (Ver licencias)",
+                        onClick = { showCreditsDialog = true },
+                    )
+
+                    TvSettingsItem(
+                        title = "Código fuente y Reporte de Bugs en GitHub",
+                        value = "github.com/${AppUpdateChecker.GITHUB_OWNER}/${AppUpdateChecker.GITHUB_REPO}",
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(AppUpdateChecker.GITHUB_REPO_URL))
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                showGitHubDialog = true
+                            }
+                        },
+                    )
+
                     TvSettingsItem(
                         title = "Aviso Legal y Deslinde de Responsabilidad",
                         value = "uTV no aloja ni distribuye contenido (Ver detalles)",
@@ -426,6 +486,103 @@ fun TvSettingsSection(
             confirmButton = {
                 TextButton(onClick = { showLegalDialog = false }) {
                     Text("Cerrar", color = uTVColors.AccentElectricBlue, fontWeight = FontWeight.Bold)
+                }
+            },
+        )
+    }
+
+    if (showCreditsDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreditsDialog = false },
+            containerColor = uTVColors.SurfaceGlassOSD,
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = uTVColors.AccentElectricBlue,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Text(
+                        text = "Créditos y Librerías",
+                        color = uTVColors.TextPrimary,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "uTV es un reproductor libre construido con:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = uTVColors.TextPrimary,
+                    )
+                    Text(
+                        text = "• iptv-org/iptv — Listas M3U globales en dominio público (Unlicense)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = uTVColors.TextSecondary,
+                    )
+                    Text(
+                        text = "• Media3 / ExoPlayer — Motor HLS y DASH para TV (Apache 2.0)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = uTVColors.TextSecondary,
+                    )
+                    Text(
+                        text = "• OkHttp — Cliente HTTP resiliente con reconexión (Apache 2.0)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = uTVColors.TextSecondary,
+                    )
+                    Text(
+                        text = "• Coil — Carga y cache inteligente de logos de canales (Apache 2.0)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = uTVColors.TextSecondary,
+                    )
+                    Text(
+                        text = "• Room — Base de datos local para catálogo y favoritos (Apache 2.0)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = uTVColors.TextSecondary,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCreditsDialog = false }) {
+                    Text("Cerrar", color = uTVColors.AccentElectricBlue, fontWeight = FontWeight.Bold)
+                }
+            },
+        )
+    }
+
+    if (showGitHubDialog) {
+        AlertDialog(
+            onDismissRequest = { showGitHubDialog = false },
+            containerColor = uTVColors.SurfaceGlassOSD,
+            title = {
+                Text(
+                    text = "GitHub / Releases",
+                    color = uTVColors.TextPrimary,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Visita el repositorio oficial en tu navegador o dispositivo:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = uTVColors.TextPrimary,
+                    )
+                    Text(
+                        text = AppUpdateChecker.GITHUB_REPO_URL,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = uTVColors.AccentElectricBlue,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showGitHubDialog = false }) {
+                    Text("Aceptar", color = uTVColors.AccentElectricBlue, fontWeight = FontWeight.Bold)
                 }
             },
         )

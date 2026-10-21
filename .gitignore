@@ -48,3 +48,4 @@ Desktop.ini
 # ── Logs & Tool Artifacts ────────────────────────────────────────────────────
 *.log
 repomix-output*.xml
+.antigravity*
