@@ -57,7 +57,7 @@ class uTVApplication : Application(), PlayerProvider, ImageLoaderFactory {
     // ── Player (PlayerProvider interface) ─────────────────────────────────────
 
     override val playerManager: ExoPlayerManager by lazy {
-        ExoPlayerManager(applicationContext, okHttpClient)
+        ExoPlayerManager(applicationContext, okHttpClient, appPreferences)
     }
 
     // ── Coil Image Loader Optimization ────────────────────────────────────────

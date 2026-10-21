@@ -94,4 +94,12 @@ interface ChannelDao {
         LIMIT :limit
     """)
     fun observeRecentlyWatched(limit: Int = 20): Flow<List<ChannelEntity>>
+
+    /** Clears watch history for all channels (privacy / data reset). */
+    @Query("UPDATE user_channel_prefs SET watchCount = 0, lastWatchedTimestamp = 0")
+    suspend fun clearWatchHistory()
+
+    /** Clears all channel favorites. */
+    @Query("UPDATE user_channel_prefs SET isFavorite = 0")
+    suspend fun clearFavorites()
 }

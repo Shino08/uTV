@@ -7,7 +7,9 @@ import com.iptv.app.uTVApplication
 import com.iptv.app.core.model.Channel
 import com.iptv.app.core.model.StreamErrorState
 import com.iptv.app.core.model.StreamQuality
+import com.iptv.app.core.model.UserSettings
 import com.iptv.app.core.player.ExoPlayerManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +37,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = (app as uTVApplication).channelRepository
     private val playerManager: ExoPlayerManager = (app as uTVApplication).playerManager
 
+    val userSettings: StateFlow<UserSettings> = repository.userSettings
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserSettings())
+
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
@@ -59,6 +64,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 if (error != null) {
                     _uiState.value.currentChannel?.let { ch ->
                         repository.markChannelWorking(ch.tvgId, false)
+                    }
+                    if (userSettings.value.autoPlayNext) {
+                        viewModelScope.launch {
+                            delay(3_000)
+                            if (_uiState.value.errorState != null) {
+                                zapNext()
+                            }
+                        }
                     }
                 }
             }

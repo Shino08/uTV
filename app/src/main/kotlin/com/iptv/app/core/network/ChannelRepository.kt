@@ -6,6 +6,7 @@ import com.iptv.app.core.database.entity.UserChannelPrefEntity
 import com.iptv.app.core.datastore.AppPreferencesDataStore
 import com.iptv.app.core.model.Category
 import com.iptv.app.core.model.Channel
+import com.iptv.app.core.model.UserSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -26,6 +27,8 @@ class ChannelRepository(
     private val dataStore: AppPreferencesDataStore,
     private val downloader: M3UDownloader,
 ) {
+    val userSettings: Flow<UserSettings> = dataStore.userSettings
+
     // ── Sync ─────────────────────────────────────────────────────────────────
 
     /**
@@ -117,7 +120,23 @@ class ChannelRepository(
     }
 
     suspend fun recordWatch(tvgId: String) {
-        dao.recordWatch(tvgId, System.currentTimeMillis())
+        val isPrivate = dataStore.userSettings.first().privateMode
+        if (!isPrivate) {
+            dao.recordWatch(tvgId, System.currentTimeMillis())
+        }
+    }
+
+    suspend fun clearWatchHistory() = withContext(Dispatchers.IO) {
+        dao.clearWatchHistory()
+    }
+
+    suspend fun clearFavorites() = withContext(Dispatchers.IO) {
+        dao.clearFavorites()
+    }
+
+    suspend fun forceSync(): Result<Unit> = withContext(Dispatchers.IO) {
+        dataStore.resetSyncTimestamp()
+        syncIfNeeded()
     }
 
     suspend fun markChannelWorking(tvgId: String, isWorking: Boolean) {

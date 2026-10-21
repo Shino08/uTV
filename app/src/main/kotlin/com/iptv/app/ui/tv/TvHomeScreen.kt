@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -77,6 +78,7 @@ enum class TvSection(
     SEARCH("Buscar", Icons.Default.Search),
     ANIME("Hubs", Icons.Default.SportsEsports),
     FAVORITES("Favoritos", Icons.Default.Star),
+    SETTINGS("Ajustes", Icons.Default.Settings),
 }
 
 /**
@@ -261,6 +263,8 @@ fun TvHomeScreen(
                                 onChannelFocus = { focusedChannel = it },
                                 onExploreGuide = { viewModel.setTvSection(TvSection.HOME) },
                             )
+
+                            TvSection.SETTINGS -> TvSettingsSection()
                         }
                     }
                 }

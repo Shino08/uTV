@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -95,6 +96,7 @@ enum class MobileTab(
     GUIDE("Guía TV", Icons.Default.FormatListNumbered),
     ANIME("Hubs", Icons.Default.SportsEsports),
     FAVORITES("Favoritos", Icons.Default.Star),
+    SETTINGS("Ajustes", Icons.Default.Settings),
 }
 
 /**
@@ -259,6 +261,8 @@ fun MobileHomeScreen(
                             onChannelClick = handleChannelClick,
                             onFavoriteToggle = { viewModel.toggleFavorite(it) },
                         )
+
+                        MobileTab.SETTINGS -> MobileSettingsTab()
                     }
                 }
             }
