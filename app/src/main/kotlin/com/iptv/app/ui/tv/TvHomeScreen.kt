@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -50,7 +51,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.iptv.app.R
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -289,25 +294,32 @@ private fun TvTopNavigationBar(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         // Brand logo
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "u",
-                style = MaterialTheme.typography.headlineMedium.copy(fontSize = 24.sp),
-                fontWeight = FontWeight.Black,
-                color = uTVColors.AccentAnimeOrange,
-            )
-            Text(
-                text = "TV",
-                style = MaterialTheme.typography.headlineMedium.copy(fontSize = 24.sp),
-                fontWeight = FontWeight.Black,
-                color = uTVColors.TextPrimary,
-            )
-            Spacer(Modifier.width(8.dp))
-            Box(
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_splash_logo),
+                contentDescription = "uTV Logo",
+                contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .size(6.dp)
-                    .background(uTVColors.AccentElectricBlue, shape = RoundedCornerShape(3.dp)),
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(8.dp)),
             )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "u",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = 24.sp),
+                    fontWeight = FontWeight.Black,
+                    color = uTVColors.AccentAnimeOrange,
+                )
+                Text(
+                    text = "TV",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = 24.sp),
+                    fontWeight = FontWeight.Black,
+                    color = uTVColors.TextPrimary,
+                )
+            }
         }
 
         // Navigable section tabs
