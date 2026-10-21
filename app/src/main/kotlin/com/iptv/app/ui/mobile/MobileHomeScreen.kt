@@ -322,6 +322,8 @@ private fun HomeTabContent(
     onFavoritesHubClick: () -> Unit,
     onClearFilters: () -> Unit,
 ) {
+    val columns = calculateMobileGridColumns()
+
     val featuredChannel = remember(allChannels, recentlyWatched) {
         recentlyWatched.firstOrNull()
             ?: allChannels.firstOrNull { it.category == Category.ANIMATION }
@@ -433,7 +435,6 @@ private fun HomeTabContent(
                 )
             }
 
-            val columns = calculateMobileGridColumns()
             items(filteredChannels.chunked(columns), key = { it.first().id }) { rowChannels ->
                 Row(
                     modifier = Modifier
@@ -926,6 +927,8 @@ private fun AnimeHubTabContent(
     onChannelClick: (Channel) -> Unit,
     onFavoriteToggle: (Channel) -> Unit,
 ) {
+    val columns = calculateMobileGridColumns()
+
     val hubCollections = remember(channels) {
         val animeList = channels.filter { it.category == Category.ANIMATION }
         val hboAndMovies = channels.filter { ch ->
@@ -1073,7 +1076,6 @@ private fun AnimeHubTabContent(
             }
 
             // Grid of Channels
-            val columns = calculateMobileGridColumns()
             items(displayedChannels.chunked(columns), key = { it.first().id }) { rowChannels ->
                 Row(
                     modifier = Modifier
@@ -1150,6 +1152,8 @@ private fun FavoritesTabContent(
     onChannelClick: (Channel) -> Unit,
     onFavoriteToggle: (Channel) -> Unit,
 ) {
+    val columns = calculateMobileGridColumns()
+
     if (favorites.isEmpty()) {
         Box(
             modifier = Modifier
@@ -1208,7 +1212,6 @@ private fun FavoritesTabContent(
                 )
             }
 
-            val columns = calculateMobileGridColumns()
             items(favorites.chunked(columns), key = { it.first().id }) { rowChannels ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
