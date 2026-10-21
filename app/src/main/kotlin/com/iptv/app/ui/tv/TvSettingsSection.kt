@@ -260,7 +260,7 @@ fun TvSettingsSection(
                 TvSettingsGroupCard(title = "Acerca de uTV y Legal", icon = Icons.Default.Info) {
                     TvSettingsItem(
                         title = "Versión de uTV",
-                        value = "v${BuildConfig.VERSION_NAME} (Compilación ${BuildConfig.VERSION_CODE})",
+                        value = "v${BuildConfig.VERSION_NAME}",
                         onClick = {},
                     )
 

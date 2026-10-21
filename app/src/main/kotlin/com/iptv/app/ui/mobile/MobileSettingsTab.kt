@@ -300,7 +300,7 @@ fun MobileSettingsTab(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "uTV v${BuildConfig.VERSION_NAME} (Compilación ${BuildConfig.VERSION_CODE})",
+                                text = "uTV v${BuildConfig.VERSION_NAME}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = uTVColors.TextPrimary,
                             )
