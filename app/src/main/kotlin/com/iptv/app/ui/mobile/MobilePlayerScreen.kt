@@ -289,7 +289,7 @@ fun MobilePlayerScreen(
                     PlayerView(ctx).apply {
                         player = viewModel.player
                         useController = false
-                        resizeMode = resizeMode.mode
+                        setResizeMode(resizeMode.mode)
                         keepScreenOn = true
                         layoutParams = ViewGroup.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,

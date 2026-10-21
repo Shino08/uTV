@@ -40,8 +40,8 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -948,7 +948,7 @@ private fun VolumeSliderRow(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.VolumeUp,
+                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                     contentDescription = null,
                     tint = uTVColors.AccentElectricBlue,
                     modifier = Modifier.size(18.dp),
