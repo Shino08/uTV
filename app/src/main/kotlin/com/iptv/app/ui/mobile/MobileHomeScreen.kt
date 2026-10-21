@@ -68,6 +68,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -432,7 +433,8 @@ private fun HomeTabContent(
                 )
             }
 
-            items(filteredChannels.chunked(2), key = { it.first().id }) { rowChannels ->
+            val columns = calculateMobileGridColumns()
+            items(filteredChannels.chunked(columns), key = { it.first().id }) { rowChannels ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -448,8 +450,11 @@ private fun HomeTabContent(
                             )
                         }
                     }
-                    if (rowChannels.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
+                    val missing = columns - rowChannels.size
+                    if (missing > 0) {
+                        repeat(missing) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -556,6 +561,19 @@ private fun HomeTabContent(
                 }
             }
         }
+    }
+}
+
+// ── Responsive Grid Columns Calculation ───────────────────────────────────────
+
+@Composable
+private fun calculateMobileGridColumns(): Int {
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    return when {
+        screenWidth >= 1200 -> 5
+        screenWidth >= 840 -> 4
+        screenWidth >= 600 -> 3
+        else -> 2
     }
 }
 
@@ -1055,7 +1073,8 @@ private fun AnimeHubTabContent(
             }
 
             // Grid of Channels
-            items(displayedChannels.chunked(2), key = { it.first().id }) { rowChannels ->
+            val columns = calculateMobileGridColumns()
+            items(displayedChannels.chunked(columns), key = { it.first().id }) { rowChannels ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1071,8 +1090,11 @@ private fun AnimeHubTabContent(
                             )
                         }
                     }
-                    if (rowChannels.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
+                    val missing = columns - rowChannels.size
+                    if (missing > 0) {
+                        repeat(missing) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -1186,7 +1208,8 @@ private fun FavoritesTabContent(
                 )
             }
 
-            items(favorites.chunked(2), key = { it.first().id }) { rowChannels ->
+            val columns = calculateMobileGridColumns()
+            items(favorites.chunked(columns), key = { it.first().id }) { rowChannels ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1200,8 +1223,11 @@ private fun FavoritesTabContent(
                             )
                         }
                     }
-                    if (rowChannels.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
+                    val missing = columns - rowChannels.size
+                    if (missing > 0) {
+                        repeat(missing) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
